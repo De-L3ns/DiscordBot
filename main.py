@@ -1,7 +1,7 @@
 import discord
 import random
 from pkg_resources import ContextualVersionConflict
-import praw
+from services import sporza_scraper_service
 import requests
 import asyncio
 import lists  # Stores large lists of data for certain commands.
@@ -12,12 +12,16 @@ import os
 discordConfig = discord_config.DiscordConfig()
 client = discordConfig.client
 reddit = discordConfig.reddit
-
+table_data = 'none'
+sporza_scraper = sporza_scraper_service.SporzaScraperService()
+table_data = sporza_scraper.scrapeSporza()
 
 @client.event
 async def on_ready():
     birthday_alert.start()
     print('KletserBot tot uw dienst.')
+
+
 
 @tasks.loop(minutes=59)
 async def birthday_alert():
@@ -161,6 +165,13 @@ async def remind(context, time, *, message):
     await context.send(f'Verstaan, ik help het volgende onthouden: {message} aangezien ge daar zelf niet toe in staat zijt.')
     await asyncio.sleep(converted_time)
     await context.send(f'{context.author.mention} weet je nog? {message}!')
+
+# Sporza command
+
+@client.command()
+async def wielermanager(context):
+    await context.send(table_data)
+    
 
 # Citaat command
 @client.command()
