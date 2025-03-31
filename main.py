@@ -7,9 +7,9 @@ import asyncio
 import lists  # Stores large lists of data for certain commands.
 from discord.ext import commands, tasks
 from datetime import datetime
-import DiscordConfig
+import discord_config
 import os
-discordConfig = DiscordConfig.DiscordConfig()
+discordConfig = discord_config.DiscordConfig()
 client = discordConfig.client
 reddit = discordConfig.reddit
 
@@ -192,8 +192,8 @@ async def vraag(context, *, question):
 
 @client.command()
 async def nostalgie(context):
-    client_id = "6959872ec510f09"
-    album_key = "WwpJlzS"
+    client_id = discordConfig.imgur_client_id
+    album_key = discordConfig.imgur_album_key
     r = requests.get(f"https://api.imgur.com/3/album/{album_key}/images?client_id={client_id}").json()
     pictures = []
 
