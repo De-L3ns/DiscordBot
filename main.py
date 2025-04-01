@@ -1,20 +1,17 @@
 import discord
 import random
-from pkg_resources import ContextualVersionConflict
-from services import sporza_scraper_service
+from services import SporzaScraperService
 import requests
 import asyncio
 import lists  # Stores large lists of data for certain commands.
 from discord.ext import commands, tasks
 from datetime import datetime
 import discord_config
-import os
 discordConfig = discord_config.DiscordConfig()
 client = discordConfig.client
 reddit = discordConfig.reddit
-table_data = 'none'
-sporza_scraper = sporza_scraper_service.SporzaScraperService()
-table_data = sporza_scraper.scrapeSporza()
+sporza_scraper = SporzaScraperService()
+
 
 @client.event
 async def on_ready():
@@ -170,7 +167,8 @@ async def remind(context, time, *, message):
 
 @client.command()
 async def wielermanager(context):
-    await context.send(table_data)
+    league_data = sporza_scraper.getCompetitionInfo()
+    await context.send(league_data)
     
 
 # Citaat command

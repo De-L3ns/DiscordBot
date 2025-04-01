@@ -2,3 +2,6 @@
 .env
 venv/
 !test_kletser.py
+__pycache__/
+*.pyc
+*.pyo
