@@ -7,6 +7,8 @@ import lists  # Stores large lists of data for certain commands.
 from discord.ext import commands, tasks
 from datetime import datetime
 import discord_config
+from models import TableCreater
+from models import PlayerInfo
 discordConfig = discord_config.DiscordConfig()
 client = discordConfig.client
 reddit = discordConfig.reddit
@@ -167,8 +169,24 @@ async def remind(context, time, *, message):
 
 @client.command()
 async def wielermanager(context):
-    league_data = sporza_scraper.getCompetitionInfo()
-    await context.send(league_data)
+    old_players = [
+        PlayerInfo(1, "CARRY", 1111),               # Original points: 1377
+        PlayerInfo(3, "De leanderleetje's ", 1203),  # Original points: 1377
+        PlayerInfo(5, "Rialcé", 944),               # Original points: 1261
+        PlayerInfo(4, "Team Snickx", 1000),          # Original points: 1231
+        PlayerInfo(5, "Kelly Verbier", 1008),        # Original points: 1197
+        PlayerInfo(6, "GoGo Pedalo", 1505),          # Original points: 1185
+        PlayerInfo(7, "Bing Bang Bong", 944),        # Original points: 1029
+        PlayerInfo(9, "Jeroen doe nou niet", 1076),  # Original points: 976
+        PlayerInfo(8, "Rijsttaartje voor onderweg", 1010)  # Original points: 876
+    ]
+    old_table = TableCreater(old_players)
+    player_info = sporza_scraper.getCompetitionInfo()
+    tableCreater = TableCreater(player_info)
+    league_table = tableCreater.create_table_string()
+    changes = tableCreater.compare_tables(old_table)
+    await context.send(league_table)
+    await context.send(changes)
     
 
 # Citaat command
