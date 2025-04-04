@@ -7,12 +7,11 @@ import lists  # Stores large lists of data for certain commands.
 from discord.ext import commands, tasks
 from datetime import datetime
 import discord_config
-from models import TableCreater
-from models import PlayerInfo
+# Initialise classes and variables
 discordConfig = discord_config.DiscordConfig()
+sporza_scraper = SporzaScraperService()
 client = discordConfig.client
 reddit = discordConfig.reddit
-sporza_scraper = SporzaScraperService()
 
 
 @client.event
@@ -20,7 +19,15 @@ async def on_ready():
     birthday_alert.start()
     print('KletserBot tot uw dienst.')
 
-
+@tasks.loop(minutes=15)
+async def wielermanager_alert():
+    print('running wielermanager update')
+    updated_league_table = sporza_scraper.getLeagueTable(True)
+    channel = client.get_channel(801919690589995028)
+    if updated_league_table:
+        print('sending update')
+        await channel.send(updated_league_table)
+    print('no update')
 
 @tasks.loop(minutes=59)
 async def birthday_alert():
@@ -169,25 +176,9 @@ async def remind(context, time, *, message):
 
 @client.command()
 async def wielermanager(context):
-    old_players = [
-        PlayerInfo(1, "CARRY", 1111),               # Original points: 1377
-        PlayerInfo(3, "De leanderleetje's ", 1203),  # Original points: 1377
-        PlayerInfo(5, "Rialcé", 944),               # Original points: 1261
-        PlayerInfo(4, "Team Snickx", 1000),          # Original points: 1231
-        PlayerInfo(5, "Kelly Verbier", 1008),        # Original points: 1197
-        PlayerInfo(6, "GoGo Pedalo", 1505),          # Original points: 1185
-        PlayerInfo(7, "Bing Bang Bong", 944),        # Original points: 1029
-        PlayerInfo(9, "Jeroen doe nou niet", 1076),  # Original points: 976
-        PlayerInfo(8, "Rijsttaartje voor onderweg", 1010)  # Original points: 876
-    ]
-    old_table = TableCreater(old_players)
-    player_info = sporza_scraper.getCompetitionInfo()
-    tableCreater = TableCreater(player_info)
-    league_table = tableCreater.create_table_string()
-    changes = tableCreater.compare_tables(old_table)
-    await context.send(league_table)
-    await context.send(changes)
     
+    league_table_info = sporza_scraper.getLeagueTable(False)
+    await context.send(league_table_info)
 
 # Citaat command
 @client.command()
