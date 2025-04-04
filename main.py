@@ -17,6 +17,7 @@ reddit = discordConfig.reddit
 @client.event
 async def on_ready():
     birthday_alert.start()
+    wielermanager_alert.start()
     print('KletserBot tot uw dienst.')
 
 @tasks.loop(minutes=15)
@@ -27,7 +28,6 @@ async def wielermanager_alert():
     if updated_league_table:
         print('sending update')
         await channel.send(updated_league_table)
-    print('no update')
 
 @tasks.loop(minutes=59)
 async def birthday_alert():

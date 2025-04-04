@@ -14,21 +14,7 @@ class SporzaScraperService:
     def __init__ (self):
         load_dotenv()
         self.url = os.getenv('SPORZA_LEAGUE_URL')
-        # self.league_table: PlayerTable = None
-        old_players = [
-            PlayerInfo(1, "CARRY", 1111),               # Original points: 1377
-            PlayerInfo(3, "De leanderleetje's ", 1203),  # Original points: 1377
-            PlayerInfo(5, "Rialcé", 944),               # Original points: 1261
-            PlayerInfo(4, "Team Snickx", 1000),          # Original points: 1231
-            PlayerInfo(5, "Kelly Verbier", 1008),        # Original points: 1197
-            PlayerInfo(6, "GoGo Pedalo", 1505),          # Original points: 1185
-            PlayerInfo(7, "Bing Bang Bong", 944),        # Original points: 1029
-            PlayerInfo(9, "Jeroen doe nou niet", 1076),  # Original points: 976
-            PlayerInfo(8, "Rijsttaartje voor onderweg", 1010)  # Original points: 876
-        ]
-
-        lt = PlayerTable(old_players)
-        self.league_table = lt
+        self.league_table: PlayerTable = None
         
 
     def __getCompetitionInfo(self) -> list[PlayerInfo]: 
