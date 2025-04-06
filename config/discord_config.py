@@ -17,6 +17,7 @@ class DiscordConfig:
         self.help_command = commands.DefaultHelpCommand(no_category='Commands')
         self.client = commands.Bot(command_prefix='!', intents=self.intents, help_command=self.help_command)
         self.token = os.getenv('DISCORD_TOKEN')
+        self.wielermanager_channel = os.getenv('WIELERMANAGER_CHANNEL_ID')
         self.initialiseRedditConfig()
         self.setImgurConfig()
 

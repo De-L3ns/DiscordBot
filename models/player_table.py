@@ -13,7 +13,7 @@ class PlayerTable:
 
     def create_table_string(self) -> str:
         table: list[str] = []
-        table.append(f"```")  # Discord code block start
+        table.append(f"```")  # Discord formatting
         table.append(self.__format_row(self.headers))  # Header row
         table.append("-" * (sum(self.collumn_width) + 6))  # Mimic table (+6 for the whitespace and |)
         
@@ -22,8 +22,7 @@ class PlayerTable:
         
         last_update = f"Last update: {datetime.today().strftime('%d-%m-%y')} - {datetime.now().strftime('%H:%M:%S')}"
         table.append(last_update)
-        table.append(f"```")  # Discord code block end
-        return "\n".join(table)
+        table.append(f"```")  # Discord formatting
     
     
     def compare_tables(self, old_table: "PlayerTable"):
@@ -35,8 +34,8 @@ class PlayerTable:
             old_player_data = other_players.get(player_data.team)
             if player_data.points != old_player_data.points:
                points_change = f"kreeg {player_data.points - old_player_data.points} punten bij"
-               rank_change = f" en stijgt naar plaats {player_data.rank}" if player_data.rank < old_player_data.rank else \
-                             f" en zakt naar plaats {player_data.rank}" if player_data.rank > old_player_data.rank else " en blijft op dezelfde plaats"
+               rank_change = f"en stijgt naar plaats {player_data.rank}" if player_data.rank < old_player_data.rank else \
+                             f"en zakt naar plaats {player_data.rank}" if player_data.rank > old_player_data.rank else "en blijft op dezelfde plaats"
                changes.append(f"🚴 {player_data.team} {points_change} {rank_change}")
         return "\n".join(changes) if changes else None
     

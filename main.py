@@ -3,15 +3,15 @@ import random
 from services import SporzaScraperService
 import requests
 import asyncio
-import lists  # Stores large lists of data for certain commands.
+import config.lists as lists  # Stores large lists of data for certain commands.
 from discord.ext import commands, tasks
 from datetime import datetime
-import discord_config
+import config.discord_config as discord_config
 # Initialise classes and variables
-discordConfig = discord_config.DiscordConfig()
+config = discord_config.DiscordConfig()
 sporza_scraper = SporzaScraperService()
-client = discordConfig.client
-reddit = discordConfig.reddit
+client = config.client
+reddit = config.reddit
 
 
 @client.event
@@ -24,9 +24,8 @@ async def on_ready():
 async def wielermanager_alert():
     print('running wielermanager update')
     updated_league_table = sporza_scraper.getLeagueTable(True)
-    channel = client.get_channel(801919690589995028)
+    channel = client.get_channel(config.wielermanager_channel)
     if updated_league_table:
-        print('sending update')
         await channel.send(updated_league_table)
 
 @tasks.loop(minutes=59)
@@ -210,8 +209,8 @@ async def vraag(context, *, question):
 
 @client.command()
 async def nostalgie(context):
-    client_id = discordConfig.imgur_client_id
-    album_key = discordConfig.imgur_album_key
+    client_id = config.imgur_client_id
+    album_key = config.imgur_album_key
     r = requests.get(f"https://api.imgur.com/3/album/{album_key}/images?client_id={client_id}").json()
     pictures = []
 
@@ -288,4 +287,4 @@ async def uitleg(context):
     await context.send(f"**{title}**\n{text}")
 
 
-discordConfig.run()
+config.run()

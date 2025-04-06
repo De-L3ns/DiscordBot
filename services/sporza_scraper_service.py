@@ -5,7 +5,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from models import PlayerInfo
 from models import PlayerTable
-import time
 import os
 import requests
 from dotenv import load_dotenv
@@ -14,7 +13,7 @@ class SporzaScraperService:
     def __init__ (self):
         load_dotenv()
         self.url = os.getenv('SPORZA_LEAGUE_URL')
-        self.league_table: PlayerTable = None
+        self.league_table: PlayerTable = PlayerTable(self.__getCompetitionInfo())
         
 
     def __getCompetitionInfo(self) -> list[PlayerInfo]: 
