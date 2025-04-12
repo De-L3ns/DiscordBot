@@ -38,7 +38,6 @@ class SporzaScraperService:
         
         if with_compare and self.league_table != None:
             compare_result: str = table.compare_tables(self.league_table)
-            print(compare_result)
             if compare_result == None:
                 return None
             table_string += compare_result

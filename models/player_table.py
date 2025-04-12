@@ -23,6 +23,7 @@ class PlayerTable:
         last_update = f"Last update: {datetime.today().strftime('%d-%m-%y')} - {datetime.now().strftime('%H:%M:%S')}"
         table.append(last_update)
         table.append(f"```")  # Discord formatting
+        return "\n".join(table)
     
     
     def compare_tables(self, old_table: "PlayerTable"):
