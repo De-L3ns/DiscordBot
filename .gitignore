@@ -1,7 +1,13 @@
 .DS_Store
 .env
 venv/
+.venv312/
 !test_kletser.py
 __pycache__/
 *.pyc
 *.pyo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

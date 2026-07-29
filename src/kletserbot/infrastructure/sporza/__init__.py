@@ -1,0 +1,1 @@
+"""Sporza infrastructure adapter."""

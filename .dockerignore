@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.git
+.gitignore
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv312
+__pycache__
+docs
+sporza_new_endpoint_draft.ipynb
+tests
+venv
+*.pyc
+*.pyo

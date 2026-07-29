@@ -1,0 +1,1 @@
+"""KletserBot Discord application."""
