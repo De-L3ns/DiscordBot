@@ -3,10 +3,10 @@ import logging
 
 import aiohttp
 
-from kletserbot.bot_factory import create_bot
-from kletserbot.infrastructure.configuration.application_settings import (
+from kletserbot.bot.application_settings import (
     ApplicationSettings,
 )
+from kletserbot.bot.bot_factory import create_bot
 
 
 async def main() -> None:

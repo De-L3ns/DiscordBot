@@ -83,19 +83,19 @@ Important feature controls:
 
 Pokémon sets and pull rates live in:
 
-- `src/kletserbot/infrastructure/cardpacks/config/sets.json`
-- `src/kletserbot/infrastructure/cardpacks/config/pull_rates.json`
+- `src/kletserbot/apps/cardpacks/infrastructure/config/sets.json`
+- `src/kletserbot/apps/cardpacks/infrastructure/config/pull_rates.json`
 
 Each set requires a local `packImageAsset`, an `energySetId`, and an explicit
-`energyCardIds` allowlist. Pack art is
-attached from `presentation/discord/assets` so third-party hotlink protection
-cannot break Discord rendering. The Energy set may be the pack set itself or an
-auxiliary API set; 151 uses `sve`. The allowlist identifies regular Basic
-Energy cards without relying on inconsistent API rarity labels. Auxiliary
-Energy sets are synchronized and cached, but cannot be gifted or opened
-directly. Adding a pack set requires entries in both files and a restart. A set
-with invalid pull rates or insufficient API card pools is disabled without
-taking down the rest of the bot.
+`energyCardIds` allowlist. Pack art is attached from
+`src/kletserbot/apps/cardpacks/assets/discord` so third-party hotlink
+protection cannot break Discord rendering. The Energy set may be the pack set
+itself or an auxiliary API set; 151 uses `sve`. The allowlist identifies
+regular Basic Energy cards without relying on inconsistent API rarity labels.
+Auxiliary Energy sets are synchronized and cached, but cannot be gifted or
+opened directly. Adding a pack set requires entries in both files and a
+restart. A set with invalid pull rates or insufficient API card pools is
+disabled without taking down the rest of the bot.
 
 At startup, valid sets synchronize from the Pokémon TCG API. A failed refresh
 uses the last valid local cache. `/pack` never contacts the API.
@@ -156,8 +156,8 @@ require live credentials.
 
 ## Documentation
 
-- [General setup](docs/general/setup.md)
-- [Application architecture](docs/general/architecture.md)
-- [Decision log](docs/decision-log/2026-07-23-decision-log.md)
-- [Implementation plan](docs/implementation-plans/2026-07-23-discord-bot-restructure.md)
-- [Pokémon pack implementation plan](src/kletserbot/application/cardpacks/docs/IMPLEMENTATION-PLAN-001-Mvp-pack-opener.md)
+- [Global architecture](docs/architecture/README.md)
+- [Project setup](docs/setup.md)
+- [General app](src/kletserbot/apps/general/docs/README.md)
+- [Cardpacks app](src/kletserbot/apps/cardpacks/docs/README.md)
+- [Wielermanager app](src/kletserbot/apps/wielermanager/docs/README.md)

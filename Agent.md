@@ -27,16 +27,30 @@ presentation -> application -> domain
              infrastructure
 ```
 
-Suggested structure:
+Organize by feature application first and by n-tier layer inside each app:
 
 ```text
-src/
-├── presentation/
-├── application/
-├── domain/
-├── infrastructure/
-└── shared/
+src/kletserbot/
+├── bot/
+├── shared/
+└── apps/
+    └── <app_name>/
+        ├── presentation/
+        ├── application/
+        ├── domain/
+        ├── infrastructure/
+        ├── docs/
+        └── assets/
 ```
+
+Feature apps must not import one another. `bot/bot_factory.py` is the
+composition root and may import every app. Put code shared by at least two
+current apps under `shared`; do not move code there speculatively.
+
+Tests mirror app ownership under `tests/unit/apps/` and
+`tests/integration/apps/`. App-specific documentation, configuration data, and
+assets belong inside the owning app. Omit an `assets/` directory when the app
+does not own assets.
 
 ### Presentation
 
@@ -552,6 +566,7 @@ Before changing code:
 7. Run formatting, linting, typing, security, and test checks.
 8. Review logs and errors for sensitive-data leakage.
 9. Update documentation when contracts or architecture change.
+10. Leave Git staging and commits to the repository owner.
 
 Do not:
 
@@ -560,6 +575,7 @@ Do not:
 - Replace libraries without a clear need.
 - Remove security controls to make tests pass.
 - Claim tests or scans passed unless they were executed.
+- Stage files or create Git commits.
 
 ---
 
