@@ -1,13 +1,15 @@
 # KletserBot
 
 KletserBot is a small Discord bot for a private server. It provides birthday
-announcements, reaction roles, quotes, nostalgia images, and the Sporza
-Wielermanager leaderboard.
+announcements, reaction roles, quotes, nostalgia images, the Sporza
+Wielermanager leaderboard, and a persistent Pokémon pack simulator.
 
 The bot uses Discord slash commands:
 
 - `/citaat`
 - `/nostalgie`
+- `/pack`
+- `/giftpack` (Discord administrators)
 - `/wielermanager`
 
 Wielermanager polling is available but disabled by default.
@@ -18,6 +20,7 @@ Wielermanager polling is available but disabled by default.
 - A Discord bot token
 - An Imgur API client ID and album key
 - A Sporza Wielermanager league URL
+- Optional: a Pokémon TCG API key for higher synchronization rate limits
 - Docker, when running the containerized deployment
 
 ## Local setup
@@ -74,6 +77,28 @@ Important feature controls:
 - `ENABLE_WIELERMANAGER_POLLING` defaults to `false`.
 - `WIELERMANAGER_CHANNEL_ID` is required only when polling is enabled.
 - `WIELERMANAGER_POLL_INTERVAL_MINUTES` defaults to `15`.
+- `CARDPACK_DATA_DIRECTORY` defaults to `data/cardpacks`.
+- `POKEMON_TCG_API_KEY` is optional and is used only during startup
+  synchronization.
+
+Pokémon sets and pull rates live in:
+
+- `src/kletserbot/infrastructure/cardpacks/config/sets.json`
+- `src/kletserbot/infrastructure/cardpacks/config/pull_rates.json`
+
+Each set requires a local `packImageAsset`, an `energySetId`, and an explicit
+`energyCardIds` allowlist. Pack art is
+attached from `presentation/discord/assets` so third-party hotlink protection
+cannot break Discord rendering. The Energy set may be the pack set itself or an
+auxiliary API set; 151 uses `sve`. The allowlist identifies regular Basic
+Energy cards without relying on inconsistent API rarity labels. Auxiliary
+Energy sets are synchronized and cached, but cannot be gifted or opened
+directly. Adding a pack set requires entries in both files and a restart. A set
+with invalid pull rates or insufficient API card pools is disabled without
+taking down the rest of the bot.
+
+At startup, valid sets synchronize from the Pokémon TCG API. A failed refresh
+uses the last valid local cache. `/pack` never contacts the API.
 
 To reactivate seasonal Wielermanager polling:
 
@@ -108,6 +133,11 @@ Stop the bot:
 docker compose down
 ```
 
+Compose stores pack inventory and cached card data in the `cardpack-data`
+named volume. Normal restarts, rebuilds, and container replacement preserve
+it. `docker compose down --volumes`, manual volume deletion, or loss of the
+host Docker data removes it.
+
 For a long-running deployment, configure restart policy and secret injection
 through the deployment platform rather than baking secrets into the image. The
 included Compose service uses `restart: unless-stopped`.
@@ -121,8 +151,8 @@ python -m ruff format --check .
 python -m mypy src
 ```
 
-Tests mock all Discord, Imgur, and Sporza boundaries and do not require live
-credentials.
+Tests fake all Discord, Imgur, Sporza, and Pokémon TCG boundaries and do not
+require live credentials.
 
 ## Documentation
 
@@ -130,3 +160,4 @@ credentials.
 - [Application architecture](docs/general/architecture.md)
 - [Decision log](docs/decision-log/2026-07-23-decision-log.md)
 - [Implementation plan](docs/implementation-plans/2026-07-23-discord-bot-restructure.md)
+- [Pokémon pack implementation plan](src/kletserbot/application/cardpacks/docs/IMPLEMENTATION-PLAN-001-Mvp-pack-opener.md)

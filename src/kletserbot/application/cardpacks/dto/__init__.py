@@ -1,0 +1,1 @@
+"""Immutable cardpack application DTOs."""

@@ -5,7 +5,13 @@ services:
     image: kletserbot:local
     env_file:
       - .env
+    environment:
+      CARDPACK_DATA_DIRECTORY: /app/data/cardpacks
+    volumes:
+      - cardpack-data:/app/data/cardpacks
     restart: unless-stopped
     init: true
     stop_grace_period: 10s
 
+volumes:
+  cardpack-data:

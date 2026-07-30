@@ -6,6 +6,7 @@ import aiohttp
 from discord.ext import commands
 
 from kletserbot.application.birthdays.birthday_service import BirthdayService
+from kletserbot.application.cardpacks.cardpack_service import CardpackService
 from kletserbot.application.nostalgia.nostalgia_service import NostalgiaService
 from kletserbot.application.quotes.quote_service import QuoteService
 from kletserbot.application.reaction_roles.reaction_role_service import (
@@ -13,6 +14,22 @@ from kletserbot.application.reaction_roles.reaction_role_service import (
 )
 from kletserbot.application.wielermanager.wielermanager_service import (
     WielermanagerService,
+)
+from kletserbot.domain.cardpacks.pack_generator import PackGenerator
+from kletserbot.infrastructure.cardpacks.cached_pokemon_card_catalog import (
+    CachedPokemonCardCatalog,
+)
+from kletserbot.infrastructure.cardpacks.json_card_set_configuration_provider import (
+    JsonCardSetConfigurationProvider,
+)
+from kletserbot.infrastructure.cardpacks.json_pokemon_card_cache import (
+    JsonPokemonCardCache,
+)
+from kletserbot.infrastructure.cardpacks.pokemon_tcg_client import (
+    PokemonTcgClient,
+)
+from kletserbot.infrastructure.cardpacks.sqlite_pack_inventory_repository import (
+    SqlitePackInventoryRepository,
 )
 from kletserbot.infrastructure.configuration.application_settings import (
     ApplicationSettings,
@@ -32,6 +49,7 @@ from kletserbot.infrastructure.static_content.static_quote_provider import (
 )
 from kletserbot.presentation.discord.birthdays_cog import BirthdayCog
 from kletserbot.presentation.discord.bot import KletserBot
+from kletserbot.presentation.discord.cardpacks_cog import CardpacksCog
 from kletserbot.presentation.discord.general_cog import GeneralCog
 from kletserbot.presentation.discord.reaction_roles_cog import ReactionRolesCog
 from kletserbot.presentation.discord.wielermanager_cog import (
@@ -56,6 +74,30 @@ def create_bot(
         payload_decoder=IndexedPayloadDecoder(),
         timeout_seconds=settings.http_timeout_seconds,
         max_attempts=settings.http_max_attempts,
+    )
+    pokemon_tcg_client = PokemonTcgClient(
+        http_session=http_session,
+        api_key=settings.pokemon_tcg_api_key,
+        timeout_seconds=settings.http_timeout_seconds,
+        max_attempts=settings.http_max_attempts,
+    )
+    pokemon_card_cache = JsonPokemonCardCache(settings.cardpack_data_directory / "cache")
+    pokemon_card_catalog = CachedPokemonCardCatalog(
+        pokemon_tcg_client,
+        pokemon_card_cache,
+    )
+    cardpack_service = CardpackService(
+        configuration_provider=JsonCardSetConfigurationProvider(
+            settings.cardpack_set_catalog_path,
+            settings.cardpack_pull_rates_path,
+        ),
+        card_catalog=pokemon_card_catalog,
+        inventory_repository=SqlitePackInventoryRepository(
+            settings.cardpack_data_directory / "inventory.sqlite3"
+        ),
+        pack_generator=PackGenerator(),
+        random_value=random.random,
+        select_card=_select_random,
     )
 
     birthday_service = BirthdayService(
@@ -84,6 +126,7 @@ def create_bot(
             birthday_channel_id=settings.birthday_channel_id,
             timezone=settings.bot_timezone,
         ),
+        CardpacksCog(cardpack_service),
         GeneralCog(
             quote_service=quote_service,
             nostalgia_service=nostalgia_service,

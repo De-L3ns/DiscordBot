@@ -121,3 +121,52 @@ def test_http_timeout_must_be_positive(
 
     with pytest.raises(InvalidConfigurationError, match="HTTP_TIMEOUT_SECONDS"):
         ApplicationSettings.from_environment(valid_environment)
+
+
+def test_cardpack_settings_have_safe_packaged_defaults(
+    valid_environment: dict[str, str],
+) -> None:
+    settings = ApplicationSettings.from_environment(valid_environment)
+
+    assert settings.cardpack_set_catalog_path.name == "sets.json"
+    assert settings.cardpack_set_catalog_path.is_file()
+    assert settings.cardpack_pull_rates_path.name == "pull_rates.json"
+    assert settings.cardpack_pull_rates_path.is_file()
+    assert settings.cardpack_data_directory.parts[-2:] == ("data", "cardpacks")
+    assert settings.pokemon_tcg_api_key is None
+
+
+def test_optional_pokemon_api_key_and_data_path_are_loaded(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["POKEMON_TCG_API_KEY"] = " secret-key "
+    valid_environment["CARDPACK_DATA_DIRECTORY"] = "/app/data/cardpacks"
+
+    settings = ApplicationSettings.from_environment(valid_environment)
+
+    assert settings.pokemon_tcg_api_key == "secret-key"
+    assert str(settings.cardpack_data_directory) == "/app/data/cardpacks"
+
+
+def test_cardpack_data_path_rejects_parent_traversal(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["CARDPACK_DATA_DIRECTORY"] = "../outside"
+
+    with pytest.raises(
+        InvalidConfigurationError,
+        match="CARDPACK_DATA_DIRECTORY",
+    ):
+        ApplicationSettings.from_environment(valid_environment)
+
+
+def test_blank_optional_cardpack_path_overrides_use_defaults(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["CARDPACK_SET_CATALOG_PATH"] = ""
+    valid_environment["CARDPACK_PULL_RATES_PATH"] = ""
+
+    settings = ApplicationSettings.from_environment(valid_environment)
+
+    assert settings.cardpack_set_catalog_path.name == "sets.json"
+    assert settings.cardpack_pull_rates_path.name == "pull_rates.json"

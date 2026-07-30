@@ -61,6 +61,7 @@ Each use case is housed in its own application package:
 ```text
 application/
 ├── birthdays/
+├── cardpacks/
 ├── nostalgia/
 ├── quotes/
 ├── reaction_roles/
@@ -225,7 +226,9 @@ The slash command remains available when polling is disabled.
 Retained commands are:
 
 - `/citaat`
+- `/giftpack`
 - `/nostalgie`
+- `/pack`
 - `/wielermanager`
 
 There is no prefix-command compatibility layer and no custom or default help
@@ -240,6 +243,24 @@ Command descriptions are concise and user-facing. Application DTOs are mapped
 to messages or embeds by presentation formatters.
 
 ## 9. Infrastructure Boundaries
+
+### 9.0 Cardpack persistence and synchronization
+
+The cardpack application defines protocols for set configuration, cached card
+catalog access, and pack inventory. Infrastructure implements them with strict
+JSON parsing, one fixed HTTPS Pokémon TCG API endpoint, atomic cache files, and
+SQLite.
+
+Startup refreshes each valid configured set and any referenced `energySetId`
+independently. An explicit `energyCardIds` allowlist selects regular Basic
+Energy cards because the API's rarity field is not consistent across sets.
+Auxiliary Energy sets are not user-facing or giftable. API failure falls back
+to the last valid cache; configuration or card-pool failure disables only the
+affected pack set. Pack opening never contacts the API.
+
+SQLite stores only unopened-pack quantities and uses conditional transactional
+updates to prevent negative balances. SQLite and cache files share the
+configured cardpack data directory, which Compose mounts from a named volume.
 
 ### 9.1 HTTP
 
