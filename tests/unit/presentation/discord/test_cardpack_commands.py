@@ -1,0 +1,150 @@
+from unittest.mock import AsyncMock
+
+from kletserbot.application.cardpacks.dto.available_card_set_dto import (
+    AvailableCardSetDto,
+)
+from kletserbot.application.cardpacks.dto.owned_pack_dto import OwnedPackDto
+from kletserbot.presentation.discord.cardpacks_cog import CardpacksCog
+
+
+class FakeCardpackService:
+    def __init__(
+        self,
+        inventory: tuple[OwnedPackDto, ...] = (),
+    ) -> None:
+        self.inventory = inventory
+        self.gifts: list[tuple[int, str, int]] = []
+
+    async def initialize(self) -> None:
+        return None
+
+    async def retrieve_inventory(
+        self,
+        discord_user_id: int,
+    ) -> tuple[OwnedPackDto, ...]:
+        del discord_user_id
+        return self.inventory
+
+    def retrieve_available_sets(self) -> tuple[AvailableCardSetDto, ...]:
+        return (
+            AvailableCardSetDto(
+                set_id="base1",
+                set_name="Base Set",
+            ),
+        )
+
+    async def gift_packs(
+        self,
+        discord_user_id: int,
+        set_id: str,
+        amount: int,
+    ) -> None:
+        self.gifts.append((discord_user_id, set_id, amount))
+
+
+class FakePermissions:
+    def __init__(self, administrator: bool) -> None:
+        self.administrator = administrator
+
+
+class FakeUser:
+    def __init__(self, user_id: int) -> None:
+        self.id = user_id
+        self.mention = f"<@{user_id}>"
+
+
+class FakeResponse:
+    def __init__(self) -> None:
+        self.send_message = AsyncMock()
+
+
+class FakeInteraction:
+    def __init__(self, *, user_id: int, is_administrator: bool = False) -> None:
+        self.user = FakeUser(user_id)
+        self.permissions = FakePermissions(is_administrator)
+        self.response = FakeResponse()
+        self.original_response = AsyncMock()
+
+
+def test_cardpack_commands_are_declared_with_admin_default() -> None:
+    commands = {command.name: command for command in CardpacksCog.__cog_app_commands__}
+
+    assert set(commands) == {"pack", "giftpack"}
+    assert commands["giftpack"].default_permissions is not None
+    assert commands["giftpack"].default_permissions.administrator is True
+
+
+async def test_pack_reports_empty_inventory_ephemerally() -> None:
+    cog = CardpacksCog(FakeCardpackService())  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123)
+
+    await cog.pack.callback(cog, interaction)  # type: ignore[arg-type]
+
+    interaction.response.send_message.assert_awaited_once_with(
+        "Je hebt momenteel geen ongeopende Pokémonpacks.",
+        ephemeral=True,
+    )
+
+
+async def test_pack_displays_positive_inventory_with_selection_view() -> None:
+    service = FakeCardpackService(
+        (
+            OwnedPackDto(
+                set_id="base1",
+                set_name="Base Set",
+                quantity=2,
+                pack_image_asset="card-pack-image-baseset.jpg",
+            ),
+        )
+    )
+    cog = CardpacksCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123)
+
+    await cog.pack.callback(cog, interaction)  # type: ignore[arg-type]
+
+    call = interaction.response.send_message.await_args
+    assert call.kwargs["embed"].title == "Base Set"
+    assert call.kwargs["embed"].image.url == "attachment://card-pack-image-baseset.jpg"
+    assert call.kwargs["files"][0].filename == "card-pack-image-baseset.jpg"
+    assert call.kwargs["ephemeral"] is True
+    assert call.kwargs["view"].owner_user_id == 123
+
+
+async def test_non_administrator_cannot_gift_packs() -> None:
+    service = FakeCardpackService()
+    cog = CardpacksCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123, is_administrator=False)
+
+    await cog.giftpack.callback(  # type: ignore[arg-type]
+        cog,
+        interaction,
+        FakeUser(456),
+        "base1",
+        2,
+    )
+
+    assert service.gifts == []
+    interaction.response.send_message.assert_awaited_once_with(
+        "Je hebt beheerdersrechten nodig voor dit commando.",
+        ephemeral=True,
+    )
+
+
+async def test_administrator_can_gift_packs() -> None:
+    service = FakeCardpackService()
+    cog = CardpacksCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123, is_administrator=True)
+
+    await cog.giftpack.callback(  # type: ignore[arg-type]
+        cog,
+        interaction,
+        FakeUser(456),
+        "base1",
+        2,
+    )
+
+    assert service.gifts == [(456, "base1", 2)]
+    interaction.response.send_message.assert_awaited_once_with(
+        "🎁 <@456> kreeg 2 × Base Set.",
+        ephemeral=True,
+    )

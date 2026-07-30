@@ -8,6 +8,8 @@ __pycache__/
 *.pyo
 .mypy_cache/
 .pytest_cache/
+.superpowers/
 .ruff_cache/
 .coverage
 htmlcov/
+/data/cardpacks/

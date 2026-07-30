@@ -23,6 +23,8 @@ The companion architecture specification is
 - Optional scheduled Wielermanager polling and change alerts.
 - `/citaat` for returning a random configured quote.
 - `/nostalgie` for returning a random image from the configured Imgur album.
+- `/pack` for selecting and interactively opening persistent Pokémon packs.
+- `/giftpack` for administrators to gift configured Pokémon packs.
 
 ### 2.2 Removed behavior
 
@@ -47,7 +49,8 @@ as a custom help command.
 
 ### 2.3 Non-goals
 
-- No database.
+- No external database server. The cardpack MVP uses local SQLite only for
+  unopened-pack inventory.
 - No web dashboard or HTTP health API.
 - No persistent reminder or scheduling system.
 - No multi-guild configuration system.
@@ -181,6 +184,16 @@ variables are read only while constructing this object.
 | `BOT_TIMEZONE` | Optional; defaults to `Europe/Brussels` |
 | `DISCORD_DEVELOPMENT_GUILD_ID` | Optional; enables guild command sync |
 | HTTP timeout/retry settings | Optional, validated, bounded defaults |
+| `POKEMON_TCG_API_KEY` | Optional; raises Pokémon synchronization rate limits |
+| `CARDPACK_DATA_DIRECTORY` | Optional; defaults to `data/cardpacks` |
+| `CARDPACK_SET_CATALOG_PATH` | Optional packaged JSON override |
+| `CARDPACK_PULL_RATES_PATH` | Optional packaged JSON override |
+
+Each entry in the packaged set catalog has an `energySetId` and an
+`energyCardIds` allowlist. Use the pack set ID when it contains the regular
+Basic Energy cards, or a dedicated Energy set when it does not; `sv3pt5` uses
+`sve`. List only non-foil Energy card IDs. Referenced Energy sets are cache
+sources only and do not become giftable packs.
 
 Startup fails with a clear configuration error when an enabled feature lacks a
 required setting. Polling-only settings are not required when polling is
@@ -252,6 +265,11 @@ The container must respond to normal termination signals and close Discord and
 HTTP resources. Outside the included Compose setup, restart policy, secret
 injection, and log collection are deployment-platform responsibilities.
 
+Compose mounts the `cardpack-data` named volume at `/app/data/cardpacks`.
+SQLite inventory and synchronized caches survive normal restarts, rebuilds,
+and container replacement. Removing Compose volumes or losing the host Docker
+data removes that state.
+
 Local Compose commands:
 
 ```bash
@@ -271,6 +289,8 @@ No automated test may contact real Discord, Imgur, or Sporza services.
 - Leaderboard ordering and validation.
 - Point and rank movement detection.
 - New and missing teams where supported by comparison rules.
+- Cardpack slot composition, weighted boundaries, Basic Energy selection,
+  reverse finishes, and insufficient card pools.
 
 ### 8.2 Application tests
 

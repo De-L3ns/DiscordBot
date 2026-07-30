@@ -73,6 +73,20 @@ def test_compose_uses_root_environment_file() -> None:
     assert "restart: unless-stopped" in compose_file
 
 
+def test_compose_persists_cardpack_data_in_named_volume() -> None:
+    compose_file = (PROJECT_ROOT / "compose.yaml").read_text(encoding="utf-8")
+
+    assert "cardpack-data:/app/data/cardpacks" in compose_file
+    assert "\nvolumes:\n  cardpack-data:\n" in compose_file
+
+
+def test_dockerfile_prepares_non_root_cardpack_data_directory() -> None:
+    dockerfile = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "mkdir --parents /app/data/cardpacks" in dockerfile
+    assert "chown kletserbot:kletserbot /app/data/cardpacks" in dockerfile
+
+
 def test_removed_features_are_absent_from_new_source() -> None:
     source = "\n".join(
         path.read_text(encoding="utf-8") for path in SOURCE_ROOT.rglob("*.py")

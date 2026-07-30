@@ -28,6 +28,7 @@ def test_create_bot_composes_all_retained_features() -> None:
 
     assert set(bot.configured_cog_names) == {
         "BirthdayCog",
+        "CardpacksCog",
         "GeneralCog",
         "ReactionRolesCog",
         "WielermanagerCog",

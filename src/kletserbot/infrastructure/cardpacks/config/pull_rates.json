@@ -1,0 +1,182 @@
+{
+  "sv3pt5": {
+    "slots": [
+      {
+        "count": 4,
+        "isHidden": false,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Common"],
+            "weight": 1.0,
+            "finish": "normal",
+            "isHit": false
+          }
+        ]
+      },
+      {
+        "count": 3,
+        "isHidden": false,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Uncommon"],
+            "weight": 1.0,
+            "finish": "normal",
+            "isHit": false
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "isHidden": true,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Common", "Uncommon"],
+            "weight": 1.0,
+            "finish": "reverse_holo",
+            "isHit": false
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "isHidden": true,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Common", "Uncommon"],
+            "weight": 0.8839,
+            "finish": "reverse_holo",
+            "isHit": false
+          },
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Illustration Rare"],
+            "weight": 0.085,
+            "finish": "holo",
+            "isHit": true
+          },
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Special Illustration Rare"],
+            "weight": 0.0311,
+            "finish": "holo",
+            "isHit": true
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "isHidden": true,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Rare"],
+            "weight": 0.7834,
+            "finish": "holo",
+            "isHit": false
+          },
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Double Rare"],
+            "weight": 0.1328,
+            "finish": "holo",
+            "isHit": true
+          },
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Ultra Rare"],
+            "weight": 0.0644,
+            "finish": "holo",
+            "isHit": true
+          },
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Hyper Rare"],
+            "weight": 0.0194,
+            "finish": "holo",
+            "isHit": true
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "isHidden": false,
+        "outcomes": [
+          {
+            "cardKind": "basic_energy",
+            "eligibleRarities": [],
+            "weight": 1.0,
+            "finish": "normal",
+            "isHit": false
+          }
+        ]
+      }
+    ]
+  },
+  "base1": {
+    "slots": [
+      {
+        "count": 6,
+        "isHidden": false,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Common"],
+            "weight": 1.0,
+            "finish": "normal",
+            "isHit": false
+          }
+        ]
+      },
+      {
+        "count": 3,
+        "isHidden": false,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Uncommon"],
+            "weight": 1.0,
+            "finish": "normal",
+            "isHit": false
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "isHidden": true,
+        "outcomes": [
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Rare"],
+            "weight": 0.67,
+            "finish": "normal",
+            "isHit": false
+          },
+          {
+            "cardKind": "rarity",
+            "eligibleRarities": ["Rare Holo"],
+            "weight": 0.33,
+            "finish": "holo",
+            "isHit": true
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "isHidden": false,
+        "outcomes": [
+          {
+            "cardKind": "basic_energy",
+            "eligibleRarities": [],
+            "weight": 1.0,
+            "finish": "normal",
+            "isHit": false
+          }
+        ]
+      }
+    ]
+  }
+}
