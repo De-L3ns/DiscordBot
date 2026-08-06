@@ -170,7 +170,7 @@ def create_service(
     return service, resolved_catalog, resolved_repository
 
 
-async def test_initialization_uses_valid_cache_after_refresh_failure() -> None:
+async def test_initialization_uses_valid_cache_without_refreshing() -> None:
     catalog = FakeCardCatalog(
         refresh_error=ExternalServiceUnavailableError("offline"),
     )
@@ -179,12 +179,25 @@ async def test_initialization_uses_valid_cache_after_refresh_failure() -> None:
     await service.initialize()
 
     assert service.available_set_ids == ("base1",)
-    assert catalog.refresh_calls == ["base1"]
     assert catalog.cache_calls == ["base1"]
+    assert catalog.refresh_calls == []
     assert repository.initialize_calls == 1
 
 
-async def test_initialization_disables_set_without_refresh_or_cache() -> None:
+async def test_initialization_refreshes_when_cache_is_unavailable() -> None:
+    catalog = FakeCardCatalog(
+        cache_error=ExternalServiceUnavailableError("no cache"),
+    )
+    service, _, _ = create_service(card_catalog=catalog)
+
+    await service.initialize()
+
+    assert service.available_set_ids == ("base1",)
+    assert catalog.cache_calls == ["base1"]
+    assert catalog.refresh_calls == ["base1"]
+
+
+async def test_initialization_disables_set_when_cache_and_refresh_are_unavailable() -> None:
     catalog = FakeCardCatalog(
         refresh_error=ExternalServiceUnavailableError("offline"),
         cache_error=ExternalServiceUnavailableError("no cache"),
@@ -194,6 +207,8 @@ async def test_initialization_disables_set_without_refresh_or_cache() -> None:
     await service.initialize()
 
     assert service.available_set_ids == ()
+    assert catalog.cache_calls == ["base1"]
+    assert catalog.refresh_calls == ["base1"]
 
 
 async def test_initialization_disables_set_with_missing_weighted_rarity() -> None:

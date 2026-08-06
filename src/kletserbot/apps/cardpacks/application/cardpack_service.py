@@ -180,20 +180,20 @@ class CardpackService:
         set_id: str,
     ) -> tuple[PokemonCard, ...] | None:
         try:
-            return await self._card_catalog.refresh_cards(set_id)
-        except ApplicationError as refresh_error:
-            logger.warning(
-                "cardpack_set_refresh_failed set_id=%s reason=%s",
-                set_id,
-                refresh_error,
-            )
-        try:
             return await self._card_catalog.retrieve_cached_cards(set_id)
         except ApplicationError as cache_error:
             logger.warning(
                 "cardpack_cache_unavailable set_id=%s reason=%s",
                 set_id,
                 cache_error,
+            )
+        try:
+            return await self._card_catalog.refresh_cards(set_id)
+        except ApplicationError as refresh_error:
+            logger.warning(
+                "cardpack_set_refresh_failed set_id=%s reason=%s",
+                set_id,
+                refresh_error,
             )
             return None
 

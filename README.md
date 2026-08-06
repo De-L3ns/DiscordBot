@@ -78,8 +78,8 @@ Important feature controls:
 - `WIELERMANAGER_CHANNEL_ID` is required only when polling is enabled.
 - `WIELERMANAGER_POLL_INTERVAL_MINUTES` defaults to `15`.
 - `CARDPACK_DATA_DIRECTORY` defaults to `data/cardpacks`.
-- `POKEMON_TCG_API_KEY` is optional and is used only during startup
-  synchronization.
+- `POKEMON_TCG_API_KEY` is optional and is used only when a configured set has
+  no valid local cache.
 
 Pokémon sets and pull rates live in:
 
@@ -97,8 +97,10 @@ opened directly. Adding a pack set requires entries in both files and a
 restart. A set with invalid pull rates or insufficient API card pools is
 disabled without taking down the rest of the bot.
 
-At startup, valid sets synchronize from the Pokémon TCG API. A failed refresh
-uses the last valid local cache. `/pack` never contacts the API.
+At startup, valid sets use their local JSON cache. A configured set without a
+valid cache is downloaded from the Pokémon TCG API. `/pack` never contacts the
+API. Card-detail cache files are stored as `data/cardpacks/cache/<set-id>.json`
+and remain ignored runtime data.
 
 To reactivate seasonal Wielermanager polling:
 

@@ -6,9 +6,9 @@ interactive pack-opening experience.
 
 ## How It Works
 
-At startup, the app reads its packaged set catalog and pull rates. It refreshes
-configured Pokémon sets through the Pokémon TCG API and falls back to the last
-valid JSON cache when refresh fails. Invalid sets are disabled independently.
+At startup, the app reads its packaged set catalog and pull rates, then uses a
+valid local JSON cache for each configured set. A set without a valid cache is
+downloaded from the Pokémon TCG API. Invalid sets are disabled independently.
 Opening a pack uses cached cards only.
 
 Unopened quantities are stored in SQLite beneath `CARDPACK_DATA_DIRECTORY`.
