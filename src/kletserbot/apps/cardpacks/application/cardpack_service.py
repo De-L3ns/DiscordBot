@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from collections.abc import Callable, Sequence
 
 from kletserbot.apps.cardpacks.application.card_set_configuration_provider import (
@@ -7,6 +8,11 @@ from kletserbot.apps.cardpacks.application.card_set_configuration_provider impor
 )
 from kletserbot.apps.cardpacks.application.dto.available_card_set_dto import (
     AvailableCardSetDto,
+)
+from kletserbot.apps.cardpacks.application.dto.collection_card_dto import (
+    AlbumCardDto,
+    CollectionCardDto,
+    CollectionSetDto,
 )
 from kletserbot.apps.cardpacks.application.dto.opened_card_dto import OpenedCardDto
 from kletserbot.apps.cardpacks.application.dto.opened_pack_dto import OpenedPackDto
@@ -55,6 +61,7 @@ class CardpackService:
         self._random_value = random_value
         self._select_card = select_card
         self._available_configurations: dict[str, CardSetConfiguration] = {}
+        self._cards_by_source_set_id: dict[str, tuple[PokemonCard, ...]] = {}
 
     async def initialize(self) -> None:
         await self._inventory_repository.initialize()
@@ -96,6 +103,7 @@ class CardpackService:
                 continue
             available_configurations[configuration.set_id] = configuration
         self._available_configurations = available_configurations
+        self._cards_by_source_set_id = synchronized_cards_by_set_id
 
     @property
     def available_set_ids(self) -> tuple[str, ...]:
@@ -167,13 +175,113 @@ class CardpackService:
         except (ApplicationError, InsufficientCardPoolError) as error:
             raise CardSetUnavailableError(f"card set is currently unavailable: {set_id}") from error
 
-        was_consumed = await self._inventory_repository.consume_pack(
+        collected_cards = tuple(
+            CollectionCardDto(
+                set_id=configuration.set_id,
+                set_name=configuration.name,
+                card_id=opened_card.card.card_id,
+                name=opened_card.card.name,
+                number=opened_card.card.number,
+                rarity=opened_card.card.rarity,
+                thumbnail_url=opened_card.card.small_image_url,
+                image_url=opened_card.card.large_image_url,
+                quantity=1,
+            )
+            for opened_card in opened_pack.cards
+        )
+        was_consumed = await self._inventory_repository.consume_pack_and_store_cards(
             discord_user_id,
             set_id,
+            collected_cards,
         )
         if not was_consumed:
             raise InsufficientPackInventoryError("the user no longer owns this pack")
         return _map_opened_pack(opened_pack, configuration.name)
+
+    async def retrieve_collection_sets(
+        self,
+        discord_user_id: int,
+    ) -> tuple[CollectionSetDto, ...]:
+        collected_cards = await self._inventory_repository.retrieve_collection(discord_user_id)
+        summaries: list[CollectionSetDto] = []
+        collected_card_ids_by_set: dict[str, set[str]] = {}
+        for card in collected_cards:
+            collected_card_ids_by_set.setdefault(card.set_id, set()).add(card.card_id)
+        for configuration in self._available_configurations.values():
+            candidates = await self._retrieve_collection_candidates(configuration)
+            collected_candidate_ids = collected_card_ids_by_set.get(
+                configuration.set_id,
+                set(),
+            ).intersection(candidates)
+            summaries.append(
+                CollectionSetDto(
+                    set_id=configuration.set_id,
+                    set_name=configuration.name,
+                    collected_cards=len(collected_candidate_ids),
+                    total_cards=len(candidates),
+                )
+            )
+        return tuple(sorted(summaries, key=lambda summary: summary.set_name))
+
+    async def retrieve_album_cards(
+        self,
+        discord_user_id: int,
+        set_id: str,
+    ) -> tuple[AlbumCardDto, ...]:
+        cards = await self._inventory_repository.retrieve_collection(discord_user_id)
+        owned_cards = {card.card_id: card for card in cards if card.set_id == set_id}
+        configuration = self._available_configurations.get(set_id)
+        if configuration is None:
+            return ()
+        candidates = await self._retrieve_collection_candidates(configuration)
+        return tuple(
+            AlbumCardDto(
+                card_id=card_id,
+                name=card.name,
+                number=card.number,
+                rarity=card.rarity,
+                image_url=card.large_image_url,
+                is_owned=card_id in owned_cards,
+                is_hit=is_hit,
+                quantity=owned_cards[card_id].quantity if card_id in owned_cards else 0,
+            )
+            for card_id, (card, is_hit) in sorted(
+                candidates.items(),
+                key=lambda candidate: (
+                    _card_number_sort_key(candidate[1][0].number), candidate[1][0].name
+                ),
+            )
+        )
+
+    async def _retrieve_collection_candidates(
+        self,
+        configuration: CardSetConfiguration,
+    ) -> dict[str, tuple[PokemonCard, bool]]:
+        primary_cards = self._cards_by_source_set_id.get(configuration.set_id)
+        if primary_cards is None:
+            primary_cards = await self._card_catalog.retrieve_cached_cards(configuration.set_id)
+            self._cards_by_source_set_id[configuration.set_id] = primary_cards
+        cards = primary_cards
+        if configuration.resolved_energy_set_id != configuration.set_id:
+            energy_set_id = configuration.resolved_energy_set_id
+            energy_cards = self._cards_by_source_set_id.get(energy_set_id)
+            if energy_cards is None:
+                energy_cards = await self._card_catalog.retrieve_cached_cards(energy_set_id)
+                self._cards_by_source_set_id[energy_set_id] = energy_cards
+            cards += energy_cards
+        allowed_energy_ids = frozenset(configuration.energy_card_ids)
+        candidates: dict[str, tuple[PokemonCard, bool]] = {}
+        for slot in configuration.slots:
+            for outcome in slot.outcomes:
+                for card in outcome.filter_eligible_cards(cards):
+                    if card.is_basic_energy and card.card_id not in allowed_energy_ids:
+                        continue
+                    existing = candidates.get(card.card_id)
+                    candidates[card.card_id] = (
+                        card,
+                        outcome.is_hit or (existing is not None and existing[1]),
+                    )
+        return candidates
 
     async def _refresh_or_retrieve_cached_cards(
         self,
@@ -217,6 +325,13 @@ class CardpackService:
         if configuration is None:
             raise CardSetUnavailableError(f"card set is currently unavailable: {set_id}")
         return configuration
+
+
+def _card_number_sort_key(number: str) -> tuple[tuple[int, int | str], ...]:
+    return tuple(
+        (0, int(part)) if part.isdecimal() else (1, part.casefold())
+        for part in re.findall(r"\d+|\D+", number)
+    )
 
 
 def _map_opened_pack(

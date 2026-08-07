@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 from kletserbot.apps.cardpacks.application.dto.available_card_set_dto import (
     AvailableCardSetDto,
 )
+from kletserbot.apps.cardpacks.application.dto.collection_card_dto import CollectionSetDto
 from kletserbot.apps.cardpacks.application.dto.owned_pack_dto import OwnedPackDto
 from kletserbot.apps.cardpacks.presentation.discord.cardpacks_cog import CardpacksCog
 
@@ -41,6 +42,15 @@ class FakeCardpackService:
     ) -> None:
         self.gifts.append((discord_user_id, set_id, amount))
 
+    async def retrieve_collection_sets(
+        self,
+        discord_user_id: int,
+    ) -> tuple[CollectionSetDto, ...]:
+        del discord_user_id
+        return (
+            CollectionSetDto("base1", "Base Set", 1, 102),
+        )
+
 
 class FakePermissions:
     def __init__(self, administrator: bool) -> None:
@@ -69,7 +79,7 @@ class FakeInteraction:
 def test_cardpack_commands_are_declared_with_admin_default() -> None:
     commands = {command.name: command for command in CardpacksCog.__cog_app_commands__}
 
-    assert set(commands) == {"pack", "giftpack"}
+    assert set(commands) == {"pack", "giftpack", "collection"}
     assert commands["giftpack"].default_permissions is not None
     assert commands["giftpack"].default_permissions.administrator is True
 
@@ -108,6 +118,17 @@ async def test_pack_displays_positive_inventory_with_selection_view() -> None:
     assert call.kwargs["files"][0].filename == "card-pack-image-baseset.jpg"
     assert call.kwargs["ephemeral"] is True
     assert call.kwargs["view"].owner_user_id == 123
+
+
+async def test_collection_displays_set_picker_ephemerally() -> None:
+    cog = CardpacksCog(FakeCardpackService())  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123)
+
+    await cog.collection.callback(cog, interaction)  # type: ignore[arg-type]
+
+    call = interaction.response.send_message.await_args
+    assert call.kwargs["embed"].title == "Pokémon collection"
+    assert call.kwargs["ephemeral"] is True
 
 
 async def test_non_administrator_cannot_gift_packs() -> None:

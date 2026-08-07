@@ -126,7 +126,11 @@ def create_bot(
             birthday_channel_id=settings.birthday_channel_id,
             timezone=settings.bot_timezone,
         ),
-        CardpacksCog(cardpack_service),
+        CardpacksCog(
+            cardpack_service,
+            bot=bot,
+            hit_channel_id=settings.cardpack_hit_channel_id,
+        ),
         GeneralCog(
             quote_service=quote_service,
             nostalgia_service=nostalgia_service,

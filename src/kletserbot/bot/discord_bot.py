@@ -36,6 +36,11 @@ class KletserBot(commands.Bot):
         development_guild = discord.Object(id=self._development_guild_id)
         self.tree.copy_global_to(guild=development_guild)
         await self.tree.sync(guild=development_guild)
+        # Development commands are guild-scoped for immediate availability.
+        # Remove any stale global registration so Discord does not show each
+        # slash command twice in the development guild.
+        self.tree.clear_commands(guild=None)
+        await self.tree.sync()
 
     @property
     def configured_cog_names(self) -> tuple[str, ...]:

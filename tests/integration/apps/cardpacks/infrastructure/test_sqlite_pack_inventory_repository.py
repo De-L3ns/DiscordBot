@@ -1,6 +1,9 @@
 import asyncio
 from pathlib import Path
 
+from kletserbot.apps.cardpacks.application.dto.collection_card_dto import (
+    CollectionCardDto,
+)
 from kletserbot.apps.cardpacks.application.dto.pack_inventory_dto import (
     PackInventoryDto,
 )
@@ -68,3 +71,26 @@ async def test_concurrent_consumers_cannot_spend_the_same_pack(
 
     assert sorted(results) == [False, True]
     assert await repository.retrieve_inventory(123) == ()
+
+
+async def test_opening_pack_stores_collection_card_atomically(tmp_path: Path) -> None:
+    repository = SqlitePackInventoryRepository(tmp_path / "cardpacks.sqlite3")
+    await repository.initialize()
+    await repository.gift_packs(123, "base1", 1)
+    card = CollectionCardDto(
+        set_id="base1", set_name="Base Set", card_id="base1-1", name="Alakazam",
+        number="1", rarity="Rare",
+        thumbnail_url="https://example.test/small.png", image_url="https://example.test/large.png",
+        quantity=1,
+    )
+
+    assert await repository.consume_pack_and_store_cards(123, "base1", (card,)) is True
+    assert await repository.retrieve_inventory(123) == ()
+    assert await repository.retrieve_collection(123) == (card,)
+    assert await repository.consume_pack_and_store_cards(123, "base1", (card,)) is False
+    assert await repository.retrieve_collection(123) == (card,)
+
+    await repository.gift_packs(123, "base1", 1)
+    assert await repository.consume_pack_and_store_cards(123, "base1", (card,)) is True
+    collected_card = (await repository.retrieve_collection(123))[0]
+    assert collected_card.quantity == 2

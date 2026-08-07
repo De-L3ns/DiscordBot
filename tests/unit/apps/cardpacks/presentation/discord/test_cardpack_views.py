@@ -1,3 +1,4 @@
+import asyncio
 import struct
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -251,6 +252,26 @@ async def test_revealed_hit_uses_celebratory_styling() -> None:
         == "✨ HIT! Kaart 9 — Card 9"
     )
     assert view.current_embed.colour == discord.Colour.gold()
+
+
+async def test_hit_is_announced_only_after_it_is_revealed() -> None:
+    announce_hit = AsyncMock()
+    view = CardRevealView(
+        owner_user_id=123,
+        cardpack_service=AsyncMock(),
+        opened_pack=opened_pack(),
+        on_hit_revealed=announce_hit,
+    )
+
+    await move_to_slot(view, 8)
+    await view.reveal_current_card(FakeInteraction(123))  # type: ignore[arg-type]
+    await view.change_card(FakeInteraction(123), 1)  # type: ignore[arg-type]
+    assert not announce_hit.await_args_list
+
+    await view.reveal_current_card(FakeInteraction(123))  # type: ignore[arg-type]
+    await asyncio.sleep(0)
+
+    announce_hit.assert_awaited_once_with(123, "sv3pt5", view.current_card)
 
 
 async def test_open_another_pack_appears_only_after_last_reveal_when_pack_remains() -> None:
