@@ -1,6 +1,7 @@
 # Cardpacks Features
 
 - [MVP pack opener](FEATURE-001-Mvp-pack-opener.md)
+- [Collection album](FEATURE-002-Collection-album.md)
 - [MVP implementation](IMPLEMENTATION-PLAN-001-Mvp-pack-opener.md)
 - [Cardpack UI implementation](IMPLEMENTATION-PLAN-002-Cardpack-ui.md)
 - [Card pagination implementation](IMPLEMENTATION-PLAN-003-Card-pagination.md)

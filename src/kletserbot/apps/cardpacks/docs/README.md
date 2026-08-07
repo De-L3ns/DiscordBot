@@ -16,13 +16,18 @@ Conditional transactional updates prevent negative inventory. The domain pack
 generator selects cards according to the configured slots and returns an
 immutable result that the application maps to DTOs.
 
-The Discord presentation exposes `/pack` and administrator-only `/giftpack`.
+The Discord presentation exposes `/pack`, `/collection`, and administrator-only `/giftpack`.
 App-owned images under `assets/discord` are attached to inventory and reveal
 messages.
+
+`/collection` stores each card once from packs opened after the feature is
+enabled. It groups cards by their originating pack set and shows every card in
+that set; cards not yet owned use the KletserBot card back.
 
 ## Configuration
 
 - `CARDPACK_DATA_DIRECTORY`
+- `CARDPACK_HIT_CHANNEL_ID` (optional)
 - `CARDPACK_SET_CATALOG_PATH`
 - `CARDPACK_PULL_RATES_PATH`
 - `POKEMON_TCG_API_KEY`

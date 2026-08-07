@@ -3,6 +3,7 @@ from collections.abc import Sequence
 import pytest
 
 from kletserbot.apps.cardpacks.application.cardpack_service import CardpackService
+from kletserbot.apps.cardpacks.application.dto.collection_card_dto import CollectionCardDto
 from kletserbot.apps.cardpacks.application.dto.pack_inventory_dto import (
     PackInventoryDto,
 )
@@ -33,6 +34,20 @@ def common_card(card_id: str = "base1-1") -> PokemonCard:
         subtypes=("Basic",),
         small_image_url="https://images.example.test/card.png",
         large_image_url="https://images.example.test/card-large.png",
+    )
+
+
+def collected_card(card_id: str) -> CollectionCardDto:
+    return CollectionCardDto(
+        set_id="base1",
+        set_name="Base Set",
+        card_id=card_id,
+        name="Collected Card",
+        number="1",
+        rarity="Common",
+        thumbnail_url="https://images.example.test/card.png",
+        image_url="https://images.example.test/card-large.png",
+        quantity=1,
     )
 
 
@@ -123,6 +138,7 @@ class FakeInventoryRepository:
         self.initialize_calls = 0
         self.gifts: list[tuple[int, str, int]] = []
         self.consume_calls: list[tuple[int, str]] = []
+        self.collected_cards: list[object] = []
 
     async def initialize(self) -> None:
         self.initialize_calls += 1
@@ -139,12 +155,27 @@ class FakeInventoryRepository:
         self.consume_calls.append((discord_user_id, set_id))
         return self.consume_result
 
+    async def consume_pack_and_store_cards(
+        self,
+        discord_user_id: int,
+        set_id: str,
+        cards: tuple[object, ...],
+    ) -> bool:
+        self.consume_calls.append((discord_user_id, set_id))
+        if self.consume_result:
+            self.collected_cards.extend(cards)
+        return self.consume_result
+
     async def retrieve_inventory(
         self,
         discord_user_id: int,
     ) -> tuple[PackInventoryDto, ...]:
         del discord_user_id
         return self.inventory
+
+    async def retrieve_collection(self, discord_user_id: int) -> tuple[object, ...]:
+        del discord_user_id
+        return tuple(self.collected_cards)
 
 
 def select_first(cards: Sequence[PokemonCard]) -> PokemonCard:
@@ -258,6 +289,20 @@ async def test_inventory_returns_only_available_sets_with_display_fields() -> No
     assert inventory[0].pack_image_asset == "card-pack-image-baseset.jpg"
 
 
+async def test_collection_summary_counts_only_cards_visible_in_the_album() -> None:
+    repository = FakeInventoryRepository()
+    repository.collected_cards.extend(
+        (collected_card("base1-1"), collected_card("base1-stale-card"))
+    )
+    service, _, _ = create_service(inventory_repository=repository)
+    await service.initialize()
+
+    summaries = await service.retrieve_collection_sets(discord_user_id=123)
+
+    assert summaries[0].collected_cards == 1
+    assert summaries[0].total_cards == 1
+
+
 async def test_gift_validates_set_and_amount_before_writing() -> None:
     service, _, repository = create_service()
     await service.initialize()
@@ -365,7 +410,7 @@ async def test_external_energy_set_is_synchronized_and_used_for_opening() -> Non
     opened_pack = await service.open_pack(123, "sv3pt5")
 
     assert service.available_set_ids == ("sv3pt5",)
-    assert catalog.refresh_calls == ["sv3pt5", "sve"]
-    assert catalog.cache_calls == ["sv3pt5", "sve"]
+    assert catalog.refresh_calls == []
+    assert catalog.cache_calls == ["sv3pt5", "sve", "sv3pt5", "sve"]
     assert opened_pack.cards[1].card_id == "sve-1"
     assert opened_pack.cards[1].is_basic_energy is True

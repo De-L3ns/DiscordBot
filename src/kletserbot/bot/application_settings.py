@@ -35,6 +35,7 @@ class ApplicationSettings:
     cardpack_set_catalog_path: Path
     cardpack_pull_rates_path: Path
     cardpack_data_directory: Path
+    cardpack_hit_channel_id: int | None
     pokemon_tcg_api_key: str | None
     http_timeout_seconds: float
     http_max_attempts: int
@@ -114,6 +115,10 @@ class ApplicationSettings:
                 environment.get("CARDPACK_DATA_DIRECTORY"),
                 "data/cardpacks",
                 "CARDPACK_DATA_DIRECTORY",
+            ),
+            cardpack_hit_channel_id=_parse_optional_positive_integer(
+                environment.get("CARDPACK_HIT_CHANNEL_ID"),
+                "CARDPACK_HIT_CHANNEL_ID",
             ),
             pokemon_tcg_api_key=_parse_optional_secret(
                 environment.get("POKEMON_TCG_API_KEY"),
