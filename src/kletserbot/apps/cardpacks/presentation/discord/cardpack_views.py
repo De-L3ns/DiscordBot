@@ -54,10 +54,7 @@ def _build_card_embed(
     title_prefix = "✨ HIT! " if opened_card.is_hit else ""
     embed = discord.Embed(
         title=(f"{title_prefix}Kaart {opened_card.slot_number} — {opened_card.name}"),
-        description=(
-            f"**Rarity:** {opened_card.rarity}\n"
-            f"**Nummer:** {opened_card.number}"
-        ),
+        description=(f"**Rarity:** {opened_card.rarity}\n**Nummer:** {opened_card.number}"),
         colour=(discord.Colour.gold() if opened_card.is_hit else discord.Colour.blurple()),
     )
     embed.set_image(url=opened_card.image_url)
@@ -103,7 +100,8 @@ class CollectionSetSelect(discord.ui.Select["CollectionSelectionView"]):
             placeholder="Kies een collectie",
             options=[
                 discord.SelectOption(
-                    label=card_set.set_name[:100], value=card_set.set_id,
+                    label=card_set.set_name[:100],
+                    value=card_set.set_id,
                     description=f"{card_set.collected_cards}/{card_set.total_cards} kaarten",
                 )
                 for card_set in sets[:25]
@@ -228,8 +226,7 @@ class CollectionAlbumView(OwnerRestrictedView):
         return tuple(
             card
             for card in self._cards
-            if (not self._show_hits or card.is_hit)
-            and (not self._show_owned or card.is_owned)
+            if (not self._show_hits or card.is_hit) and (not self._show_owned or card.is_owned)
         )
 
     async def toggle_hits(self, interaction: discord.Interaction) -> None:
@@ -317,9 +314,7 @@ class CollectionHitsButton(discord.ui.Button[CollectionAlbumView]):
         super().__init__(
             label="Alle kaarten" if showing_hits else "Hits",
             style=(
-                discord.ButtonStyle.primary
-                if not showing_hits
-                else discord.ButtonStyle.secondary
+                discord.ButtonStyle.primary if not showing_hits else discord.ButtonStyle.secondary
             ),
             custom_id="cardpack:collection:hits",
         )
@@ -333,11 +328,7 @@ class CollectionOwnedButton(discord.ui.Button[CollectionAlbumView]):
     def __init__(self, *, showing_owned: bool) -> None:
         super().__init__(
             label="Alle kaarten" if showing_owned else "Mijn kaarten",
-            style=(
-                discord.ButtonStyle.secondary
-                if showing_owned
-                else discord.ButtonStyle.primary
-            ),
+            style=(discord.ButtonStyle.secondary if showing_owned else discord.ButtonStyle.primary),
             custom_id="cardpack:collection:owned",
         )
 

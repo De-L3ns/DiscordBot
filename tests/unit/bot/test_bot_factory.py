@@ -11,6 +11,7 @@ from kletserbot.bot.bot_factory import create_bot
 def settings() -> ApplicationSettings:
     return ApplicationSettings.from_environment(
         {
+            "BOT_MODE": "production",
             "DISCORD_TOKEN": "test-token",
             "BIRTHDAY_CHANNEL_ID": "100",
             "REACTION_ROLE_MESSAGE_ID": "200",

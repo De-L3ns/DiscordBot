@@ -14,9 +14,9 @@ def test_only_retained_slash_commands_are_declared() -> None:
     }
 
     assert command_names == {
-            "citaat",
-            "collection",
-            "giftpack",
+        "citaat",
+        "collection",
+        "giftpack",
         "nostalgie",
         "pack",
         "wielermanager",

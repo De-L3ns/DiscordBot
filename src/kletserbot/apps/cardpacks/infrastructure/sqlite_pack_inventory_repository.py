@@ -244,9 +244,15 @@ class SqlitePackInventoryRepository:
                     DO UPDATE SET quantity = quantity + 1
                     """,
                     (
-                        str(discord_user_id), card.set_id, card.set_name,
-                        card.card_id, card.name, card.number, card.rarity,
-                        card.thumbnail_url, card.image_url,
+                        str(discord_user_id),
+                        card.set_id,
+                        card.set_name,
+                        card.card_id,
+                        card.name,
+                        card.number,
+                        card.rarity,
+                        card.thumbnail_url,
+                        card.image_url,
                     ),
                 )
             return True
@@ -284,9 +290,15 @@ class SqlitePackInventoryRepository:
             ).fetchall()
         return tuple(
             CollectionCardDto(
-                set_id=str(row[0]), set_name=str(row[1]), card_id=str(row[2]),
-                name=str(row[3]), number=str(row[4]), rarity=str(row[5]),
-                thumbnail_url=str(row[6]), image_url=str(row[7]), quantity=int(row[8]),
+                set_id=str(row[0]),
+                set_name=str(row[1]),
+                card_id=str(row[2]),
+                name=str(row[3]),
+                number=str(row[4]),
+                rarity=str(row[5]),
+                thumbnail_url=str(row[6]),
+                image_url=str(row[7]),
+                quantity=int(row[8]),
             )
             for row in rows
         )

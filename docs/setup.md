@@ -146,6 +146,7 @@ variables are read only while constructing this object.
 | Setting | Requirement |
 | --- | --- |
 | `DISCORD_TOKEN` | Always required; secret |
+| `BOT_MODE` | Required; `test` requires a development guild, `production` rejects one |
 | `BIRTHDAY_CHANNEL_ID` | Required while birthday announcements are enabled |
 | `REACTION_ROLE_MESSAGE_ID` | Required while reaction roles are enabled |
 | `IMGUR_CLIENT_ID` | Required for `/nostalgie`; secret |
@@ -155,7 +156,7 @@ variables are read only while constructing this object.
 | `WIELERMANAGER_CHANNEL_ID` | Required only when polling is enabled |
 | `WIELERMANAGER_POLL_INTERVAL_MINUTES` | Optional positive bounded integer |
 | `BOT_TIMEZONE` | Optional; defaults to `Europe/Brussels` |
-| `DISCORD_DEVELOPMENT_GUILD_ID` | Optional; enables guild command sync |
+| `DISCORD_DEVELOPMENT_GUILD_ID` | Required in test mode; forbidden in production |
 | HTTP timeout/retry settings | Optional, validated, bounded defaults |
 | `POKEMON_TCG_API_KEY` | Optional; raises Pokémon synchronization rate limits |
 | `CARDPACK_DATA_DIRECTORY` | Optional; defaults to `data/cardpacks` |
@@ -187,12 +188,14 @@ only direct runtime dependencies:
 - `discord.py`
 - `aiohttp`
 - `python-dotenv` if local `.env` loading remains supported
+- `tzdata` for portable IANA timezone data on Windows and slim containers
 
 The verified direct runtime versions are:
 
 - `aiohttp==3.14.3`
 - `discord.py==2.7.1`
 - `python-dotenv==1.2.2`
+- `tzdata==2026.3`
 
 The previous full-environment freeze is not retained. Notebook, debugger, and
 unrelated transitive packages are not declared as direct runtime dependencies.
@@ -211,8 +214,9 @@ continues installing runtime dependencies from `requirements.txt`.
 ## 7. Docker Setup
 
 `compose.yaml` is the default local deployment entry point. It builds the
-image, loads runtime variables from the repository-root `.env` file, enables a
-minimal init process, and applies `restart: unless-stopped`.
+image, loads the selected runtime environment file, enables a minimal init
+process, applies `restart: unless-stopped`, and reports healthy only after the
+bot connects to Discord.
 
 The `.env` file remains excluded from the Docker build context and is never
 copied into an image layer.
@@ -250,6 +254,16 @@ docker compose up --build --detach
 docker compose logs --follow kletserbot
 docker compose down
 ```
+
+For a live test bot, use a separate Discord application and guild. Copy
+`.env.testbot.example` to `.env.testbot`, enter test-only values, then use:
+
+```bash
+docker compose --env-file .env.testbot up --build --detach
+```
+
+Production uses the same Compose definition with a host-only `.env.production`
+file and a digest-pinned GHCR image.
 
 ## 8. Testing and Quality Setup
 

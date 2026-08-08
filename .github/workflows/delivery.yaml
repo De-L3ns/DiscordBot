@@ -1,0 +1,142 @@
+name: Deliver production bot
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Python
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --requirement requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest
+
+      - name: Check linting
+        run: python -m ruff check .
+
+      - name: Check formatting
+        run: python -m ruff format --check .
+
+      - name: Check types
+        run: python -m mypy src
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+
+      - name: Check deployment scripts
+        run: shellcheck deployment/*.sh
+
+      - name: Validate test-bot Compose configuration
+        run: KLETSERBOT_ENV_FILE=.env.testbot.example docker compose --env-file .env.testbot.example config --quiet
+
+  publish:
+    needs: quality
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      image_reference: ${{ steps.digest.outputs.image_reference }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Determine image name
+        id: image
+        shell: bash
+        run: |
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "image_name=${image_name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        id: push
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: .
+          push: true
+          provenance: mode=max
+          tags: ${{ steps.image.outputs.image_name }}:sha-${{ github.sha }}
+
+      - name: Record immutable image reference
+        id: digest
+        shell: bash
+        run: echo "image_reference=${{ steps.image.outputs.image_name }}@${{ steps.push.outputs.digest }}" >> "${GITHUB_OUTPUT}"
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: production
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    steps:
+      - name: Check out deployment files
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Configure verified SSH access
+        shell: bash
+        env:
+          DEPLOYMENT_PRIVATE_KEY: ${{ secrets.DROPLET_SSH_PRIVATE_KEY }}
+          DEPLOYMENT_KNOWN_HOSTS: ${{ secrets.DROPLET_SSH_KNOWN_HOSTS }}
+        run: |
+          install --directory --mode=700 "${HOME}/.ssh"
+          printf '%s\n' "${DEPLOYMENT_PRIVATE_KEY}" > "${HOME}/.ssh/id_ed25519"
+          chmod 600 "${HOME}/.ssh/id_ed25519"
+          printf '%s\n' "${DEPLOYMENT_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
+          chmod 600 "${HOME}/.ssh/known_hosts"
+
+      - name: Upload candidate release files
+        shell: bash
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_DEPLOY_USER: ${{ secrets.DROPLET_DEPLOY_USER }}
+        run: |
+          remote_target="${DROPLET_DEPLOY_USER}@${DROPLET_HOST}:/opt/kletserbot"
+          scp -o BatchMode=yes compose.yaml "${remote_target}/compose.yaml.candidate"
+          scp -o BatchMode=yes deployment/deploy-production.sh "${remote_target}/deploy-production.sh"
+          scp -o BatchMode=yes deployment/rollback-production.sh "${remote_target}/rollback-production.sh"
+          scp -o BatchMode=yes deployment/export-cardpack-data.sh "${remote_target}/export-cardpack-data.sh"
+          scp -o BatchMode=yes deployment/restore-cardpack-data.sh "${remote_target}/restore-cardpack-data.sh"
+
+      - name: Deploy immutable image
+        shell: bash
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_DEPLOY_USER: ${{ secrets.DROPLET_DEPLOY_USER }}
+          IMAGE_REFERENCE: ${{ needs.publish.outputs.image_reference }}
+        run: |
+          if [[ ! "${IMAGE_REFERENCE}" =~ ^ghcr\.io/[a-z0-9._-]+/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$ ]]; then
+            echo "The published image reference is invalid." >&2
+            exit 1
+          fi
+          ssh -o BatchMode=yes "${DROPLET_DEPLOY_USER}@${DROPLET_HOST}" \
+            "chmod 750 /opt/kletserbot/*.sh && /opt/kletserbot/deploy-production.sh '${IMAGE_REFERENCE}'"
+
+      - name: Remove temporary SSH key
+        if: always()
+        run: rm --force "${HOME}/.ssh/id_ed25519"
