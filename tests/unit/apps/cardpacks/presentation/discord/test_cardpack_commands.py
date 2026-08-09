@@ -4,6 +4,7 @@ from kletserbot.apps.cardpacks.application.dto.available_card_set_dto import (
     AvailableCardSetDto,
 )
 from kletserbot.apps.cardpacks.application.dto.collection_card_dto import CollectionSetDto
+from kletserbot.apps.cardpacks.application.dto.opened_card_dto import OpenedCardDto
 from kletserbot.apps.cardpacks.application.dto.owned_pack_dto import OwnedPackDto
 from kletserbot.apps.cardpacks.presentation.discord.cardpacks_cog import CardpacksCog
 
@@ -74,19 +75,33 @@ class FakeInteraction:
         self.original_response = AsyncMock()
 
 
+class FakeHitChannel:
+    def __init__(self) -> None:
+        self.send = AsyncMock()
+
+
+class FakeBot:
+    def __init__(self, channel: FakeHitChannel) -> None:
+        self._channel = channel
+
+    def get_channel(self, channel_id: int) -> FakeHitChannel:
+        del channel_id
+        return self._channel
+
+
 def test_cardpack_commands_are_declared_with_admin_default() -> None:
     commands = {command.name: command for command in CardpacksCog.__cog_app_commands__}
 
-    assert set(commands) == {"pack", "giftpack", "collection"}
+    assert set(commands) == {"packs", "giftpack", "collection"}
     assert commands["giftpack"].default_permissions is not None
     assert commands["giftpack"].default_permissions.administrator is True
 
 
-async def test_pack_reports_empty_inventory_ephemerally() -> None:
+async def test_packs_reports_empty_inventory_ephemerally() -> None:
     cog = CardpacksCog(FakeCardpackService())  # type: ignore[arg-type]
     interaction = FakeInteraction(user_id=123)
 
-    await cog.pack.callback(cog, interaction)  # type: ignore[arg-type]
+    await cog.packs.callback(cog, interaction)  # type: ignore[arg-type]
 
     interaction.response.send_message.assert_awaited_once_with(
         "Je hebt momenteel geen ongeopende Pokémonpacks.",
@@ -94,7 +109,7 @@ async def test_pack_reports_empty_inventory_ephemerally() -> None:
     )
 
 
-async def test_pack_displays_positive_inventory_with_selection_view() -> None:
+async def test_packs_displays_positive_inventory_with_selection_view() -> None:
     service = FakeCardpackService(
         (
             OwnedPackDto(
@@ -108,7 +123,7 @@ async def test_pack_displays_positive_inventory_with_selection_view() -> None:
     cog = CardpacksCog(service)  # type: ignore[arg-type]
     interaction = FakeInteraction(user_id=123)
 
-    await cog.pack.callback(cog, interaction)  # type: ignore[arg-type]
+    await cog.packs.callback(cog, interaction)  # type: ignore[arg-type]
 
     call = interaction.response.send_message.await_args
     assert call.kwargs["embed"].title == "Base Set"
@@ -116,6 +131,39 @@ async def test_pack_displays_positive_inventory_with_selection_view() -> None:
     assert call.kwargs["files"][0].filename == "card-pack-image-baseset.jpg"
     assert call.kwargs["ephemeral"] is True
     assert call.kwargs["view"].owner_user_id == 123
+
+
+async def test_hit_announcement_uses_pulled_and_copy_count_label() -> None:
+    channel = FakeHitChannel()
+    cog = CardpacksCog(
+        FakeCardpackService(),  # type: ignore[arg-type]
+        bot=FakeBot(channel),  # type: ignore[arg-type]
+        hit_channel_id=456,
+    )
+    cog._retrieve_hit_collection_details = AsyncMock(return_value=(2, None))
+
+    await cog._announce_hit(
+        123,
+        "base1",
+        OpenedCardDto(
+            slot_number=1,
+            card_id="base1-4",
+            name="Charizard",
+            number="4",
+            rarity="Rare Holo",
+            finish="holo",
+            image_url="https://example.com/card.png",
+            is_hit=True,
+            is_hidden=False,
+            is_basic_energy=False,
+        ),
+    )
+
+    embed = channel.send.await_args.kwargs["embed"]
+    assert embed.title == "✨ Er werd een nieuwe hit gepulled!"
+    assert embed.description == "<@123> heeft **Charizard** gepulled!"
+    assert embed.fields[1].name == "Aantal exemplaren"
+    assert embed.fields[1].value == "2×"
 
 
 async def test_collection_displays_set_picker_ephemerally() -> None:

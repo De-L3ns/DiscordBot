@@ -18,7 +18,7 @@ def test_only_retained_slash_commands_are_declared() -> None:
         "collection",
         "giftpack",
         "nostalgie",
-        "pack",
+        "packs",
         "wielermanager",
     }
 
