@@ -8,7 +8,7 @@ The bot uses Discord slash commands:
 
 - `/citaat`
 - `/nostalgie`
-- `/pack`
+- `/packs`
 - `/giftpack` (Discord administrators)
 - `/wielermanager`
 
@@ -115,7 +115,7 @@ restart. A set with invalid pull rates or insufficient API card pools is
 disabled without taking down the rest of the bot.
 
 At startup, valid sets use their local JSON cache. A configured set without a
-valid cache is downloaded from the Pokémon TCG API. `/pack` never contacts the
+valid cache is downloaded from the Pokémon TCG API. `/packs` never contacts the
 API. Card-detail cache files are stored as `data/cardpacks/cache/<set-id>.json`
 and remain ignored runtime data.
 

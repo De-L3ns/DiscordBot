@@ -16,7 +16,7 @@ Conditional transactional updates prevent negative inventory. The domain pack
 generator selects cards according to the configured slots and returns an
 immutable result that the application maps to DTOs.
 
-The Discord presentation exposes `/pack`, `/collection`, and administrator-only `/giftpack`.
+The Discord presentation exposes `/packs`, `/collection`, and administrator-only `/giftpack`.
 App-owned images under `assets/discord` are attached to inventory and reveal
 messages.
 

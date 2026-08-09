@@ -256,7 +256,7 @@ class CollectionAlbumView(OwnerRestrictedView):
         self.add_item(CollectionBackButton())
         embed = discord.Embed(
             title=f"#{card.number} — {card.name}",
-            description=f"**Rarity:** {card.rarity}\n**Verzameld:** {card.quantity}×",
+            description=f"**Rarity:** {card.rarity}\n**Amount:** {card.quantity}×",
             colour=discord.Colour.blurple(),
         )
         embed.set_image(url=card.image_url)

@@ -37,10 +37,10 @@ class CardpacksCog(commands.Cog):
             logger.exception("cardpack_initialization_unexpected_failure")
 
     @app_commands.command(
-        name="pack",
+        name="packs",
         description="Bekijk en open je ongeopende Pokémonpacks.",
     )
-    async def pack(self, interaction: discord.Interaction) -> None:
+    async def packs(self, interaction: discord.Interaction) -> None:
         try:
             owned_packs = await self._cardpack_service.retrieve_inventory(interaction.user.id)
             if not owned_packs:
@@ -107,12 +107,12 @@ class CardpacksCog(commands.Cog):
             quantity, collection_set = 0, None
 
         embed = discord.Embed(
-            title="✨ Nieuwe hit onthuld!",
-            description=f"<@{discord_user_id}> heeft **{card.name}** onthuld!",
+            title="✨ Er werd een nieuwe hit gepulled!",
+            description=f"<@{discord_user_id}> heeft **{card.name}** gepulled!",
             colour=discord.Colour.gold(),
         )
         embed.add_field(name="Rarity", value=card.rarity, inline=True)
-        embed.add_field(name="Verzameld", value=f"{quantity}×", inline=True)
+        embed.add_field(name="Aantal exemplaren", value=f"{quantity}×", inline=True)
         if collection_set is not None:
             set_name, collected_cards, total_cards = collection_set
             completion = 100 * collected_cards / total_cards if total_cards else 0

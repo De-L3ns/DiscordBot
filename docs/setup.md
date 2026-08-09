@@ -24,7 +24,7 @@ are recorded in
 - Optional scheduled Wielermanager polling and change alerts.
 - `/citaat` for returning a random configured quote.
 - `/nostalgie` for returning a random image from the configured Imgur album.
-- `/pack` for selecting and interactively opening persistent Pokémon packs.
+- `/packs` for selecting and interactively opening persistent Pokémon packs.
 - `/giftpack` for administrators to gift configured Pokémon packs.
 
 ### 2.2 Removed behavior
