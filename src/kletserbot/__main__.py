@@ -15,6 +15,7 @@ async def main() -> None:
         format=("%(asctime)s %(levelname)s %(name)s operation=%(message)s"),
     )
     settings = ApplicationSettings.from_environment()
+    logging.getLogger(__name__).info("bot_mode=%s", settings.bot_mode)
     async with aiohttp.ClientSession() as http_session:
         bot = create_bot(settings, http_session)
         async with bot:

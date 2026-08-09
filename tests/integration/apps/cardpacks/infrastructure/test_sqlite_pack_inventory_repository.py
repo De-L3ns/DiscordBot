@@ -78,9 +78,14 @@ async def test_opening_pack_stores_collection_card_atomically(tmp_path: Path) ->
     await repository.initialize()
     await repository.gift_packs(123, "base1", 1)
     card = CollectionCardDto(
-        set_id="base1", set_name="Base Set", card_id="base1-1", name="Alakazam",
-        number="1", rarity="Rare",
-        thumbnail_url="https://example.test/small.png", image_url="https://example.test/large.png",
+        set_id="base1",
+        set_name="Base Set",
+        card_id="base1-1",
+        name="Alakazam",
+        number="1",
+        rarity="Rare",
+        thumbnail_url="https://example.test/small.png",
+        image_url="https://example.test/large.png",
         quantity=1,
     )
 

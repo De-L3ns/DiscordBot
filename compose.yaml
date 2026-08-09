@@ -2,9 +2,9 @@ services:
   kletserbot:
     build:
       context: .
-    image: kletserbot:local
+    image: ${KLETSERBOT_IMAGE:-kletserbot:local}
     env_file:
-      - .env
+      - ${KLETSERBOT_ENV_FILE:-.env}
     environment:
       CARDPACK_DATA_DIRECTORY: /app/data/cardpacks
     volumes:
@@ -12,6 +12,13 @@ services:
     restart: unless-stopped
     init: true
     stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/kletserbot-ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
 
 volumes:
   cardpack-data:
+    name: ${CARDPACK_DATA_VOLUME:-kletserbot-cardpack-data}

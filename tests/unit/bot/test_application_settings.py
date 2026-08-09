@@ -4,6 +4,7 @@ import pytest
 
 from kletserbot.bot.application_settings import (
     ApplicationSettings,
+    BotMode,
     InvalidConfigurationError,
 )
 
@@ -11,6 +12,7 @@ from kletserbot.bot.application_settings import (
 @pytest.fixture
 def valid_environment() -> dict[str, str]:
     return {
+        "BOT_MODE": "production",
         "DISCORD_TOKEN": "test-discord-token",
         "BIRTHDAY_CHANNEL_ID": "100",
         "REACTION_ROLE_MESSAGE_ID": "200",
@@ -37,6 +39,47 @@ def test_polling_is_disabled_by_default(valid_environment: dict[str, str]) -> No
     assert settings.is_wielermanager_polling_enabled is False
     assert settings.wielermanager_channel_id is None
     assert settings.wielermanager_poll_interval_minutes == 15
+
+
+def test_test_mode_requires_a_development_guild(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["BOT_MODE"] = "test"
+
+    with pytest.raises(InvalidConfigurationError, match="DISCORD_DEVELOPMENT_GUILD_ID"):
+        ApplicationSettings.from_environment(valid_environment)
+
+
+def test_test_mode_loads_a_development_guild(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["BOT_MODE"] = "test"
+    valid_environment["DISCORD_DEVELOPMENT_GUILD_ID"] = "300"
+
+    settings = ApplicationSettings.from_environment(valid_environment)
+
+    assert settings.bot_mode is BotMode.TEST
+    assert settings.discord_development_guild_id == 300
+
+
+def test_production_mode_rejects_a_development_guild(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["DISCORD_DEVELOPMENT_GUILD_ID"] = "300"
+
+    with pytest.raises(InvalidConfigurationError, match="DISCORD_DEVELOPMENT_GUILD_ID"):
+        ApplicationSettings.from_environment(valid_environment)
+
+
+@pytest.mark.parametrize("bot_mode", ["", "development", "testing"])
+def test_bot_mode_must_be_test_or_production(
+    valid_environment: dict[str, str],
+    bot_mode: str,
+) -> None:
+    valid_environment["BOT_MODE"] = bot_mode
+
+    with pytest.raises(InvalidConfigurationError, match="BOT_MODE"):
+        ApplicationSettings.from_environment(valid_environment)
 
 
 def test_polling_channel_is_required_when_polling_is_enabled(
@@ -145,7 +188,7 @@ def test_optional_pokemon_api_key_and_data_path_are_loaded(
     settings = ApplicationSettings.from_environment(valid_environment)
 
     assert settings.pokemon_tcg_api_key == "secret-key"
-    assert str(settings.cardpack_data_directory) == "/app/data/cardpacks"
+    assert settings.cardpack_data_directory.as_posix() == "/app/data/cardpacks"
 
 
 def test_cardpack_data_path_rejects_parent_traversal(
@@ -170,3 +213,4 @@ def test_blank_optional_cardpack_path_overrides_use_defaults(
 
     assert settings.cardpack_set_catalog_path.name == "sets.json"
     assert settings.cardpack_pull_rates_path.name == "pull_rates.json"
+    assert settings.bot_mode is BotMode.PRODUCTION

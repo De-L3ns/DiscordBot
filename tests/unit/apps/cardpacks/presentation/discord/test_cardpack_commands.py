@@ -47,9 +47,7 @@ class FakeCardpackService:
         discord_user_id: int,
     ) -> tuple[CollectionSetDto, ...]:
         del discord_user_id
-        return (
-            CollectionSetDto("base1", "Base Set", 1, 102),
-        )
+        return (CollectionSetDto("base1", "Base Set", 1, 102),)
 
 
 class FakePermissions:

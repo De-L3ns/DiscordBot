@@ -183,7 +183,7 @@ def test_runtime_requirements_contain_only_direct_dependencies() -> None:
         if line and not line.startswith("#")
     }
 
-    assert requirements == {"aiohttp", "discord.py", "python-dotenv"}
+    assert requirements == {"aiohttp", "discord.py", "python-dotenv", "tzdata"}
 
 
 def test_dockerfile_targets_python_312_and_non_root_user() -> None:
@@ -194,11 +194,11 @@ def test_dockerfile_targets_python_312_and_non_root_user() -> None:
     assert 'CMD ["python", "-m", "kletserbot"]' in dockerfile
 
 
-def test_compose_uses_root_environment_file() -> None:
+def test_compose_selects_a_runtime_environment_file() -> None:
     compose_file = (PROJECT_ROOT / "compose.yaml").read_text(encoding="utf-8")
 
     assert "env_file:" in compose_file
-    assert "- .env" in compose_file
+    assert "${KLETSERBOT_ENV_FILE:-.env}" in compose_file
     assert "restart: unless-stopped" in compose_file
 
 
@@ -207,6 +207,14 @@ def test_compose_persists_cardpack_data_in_named_volume() -> None:
 
     assert "cardpack-data:/app/data/cardpacks" in compose_file
     assert "\nvolumes:\n  cardpack-data:\n" in compose_file
+    assert "${CARDPACK_DATA_VOLUME:-kletserbot-cardpack-data}" in compose_file
+
+
+def test_compose_waits_for_discord_readiness() -> None:
+    compose_file = (PROJECT_ROOT / "compose.yaml").read_text(encoding="utf-8")
+
+    assert "healthcheck:" in compose_file
+    assert "/tmp/kletserbot-ready" in compose_file
 
 
 def test_dockerfile_prepares_non_root_cardpack_data_directory() -> None:

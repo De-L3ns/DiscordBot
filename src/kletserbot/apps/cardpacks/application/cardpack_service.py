@@ -248,7 +248,8 @@ class CardpackService:
             for card_id, (card, is_hit) in sorted(
                 candidates.items(),
                 key=lambda candidate: (
-                    _card_number_sort_key(candidate[1][0].number), candidate[1][0].name
+                    _card_number_sort_key(candidate[1][0].number),
+                    candidate[1][0].name,
                 ),
             )
         )

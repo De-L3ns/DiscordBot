@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -14,6 +15,13 @@ class InvalidConfigurationError(ValueError):
     """Raised when runtime configuration is missing or invalid."""
 
 
+class BotMode(StrEnum):
+    """Selects the runtime safeguards for a Discord bot environment."""
+
+    TEST = "test"
+    PRODUCTION = "production"
+
+
 _DEFAULT_CARDPACK_CONFIG_DIRECTORY = (
     Path(__file__).parents[1] / "apps" / "cardpacks" / "infrastructure" / "config"
 )
@@ -21,6 +29,7 @@ _DEFAULT_CARDPACK_CONFIG_DIRECTORY = (
 
 @dataclass(frozen=True, slots=True)
 class ApplicationSettings:
+    bot_mode: BotMode
     discord_token: str
     birthday_channel_id: int
     reaction_role_message_id: int
@@ -49,6 +58,20 @@ class ApplicationSettings:
             load_dotenv()
             environment = os.environ
 
+        bot_mode = _parse_bot_mode(_require_value(environment, "BOT_MODE"))
+        development_guild_id = _parse_optional_positive_integer(
+            environment.get("DISCORD_DEVELOPMENT_GUILD_ID"),
+            "DISCORD_DEVELOPMENT_GUILD_ID",
+        )
+        if bot_mode is BotMode.TEST and development_guild_id is None:
+            raise InvalidConfigurationError(
+                "DISCORD_DEVELOPMENT_GUILD_ID is required when BOT_MODE is test"
+            )
+        if bot_mode is BotMode.PRODUCTION and development_guild_id is not None:
+            raise InvalidConfigurationError(
+                "DISCORD_DEVELOPMENT_GUILD_ID must be blank when BOT_MODE is production"
+            )
+
         is_polling_enabled = _parse_boolean(
             environment.get("ENABLE_WIELERMANAGER_POLLING", "false"),
             "ENABLE_WIELERMANAGER_POLLING",
@@ -76,6 +99,7 @@ class ApplicationSettings:
             ) from error
 
         return cls(
+            bot_mode=bot_mode,
             discord_token=_require_value(environment, "DISCORD_TOKEN"),
             birthday_channel_id=_parse_positive_integer(
                 _require_value(environment, "BIRTHDAY_CHANNEL_ID"),
@@ -97,10 +121,7 @@ class ApplicationSettings:
                 maximum=1_440,
             ),
             bot_timezone=bot_timezone,
-            discord_development_guild_id=_parse_optional_positive_integer(
-                environment.get("DISCORD_DEVELOPMENT_GUILD_ID"),
-                "DISCORD_DEVELOPMENT_GUILD_ID",
-            ),
+            discord_development_guild_id=development_guild_id,
             cardpack_set_catalog_path=_parse_optional_path(
                 environment.get("CARDPACK_SET_CATALOG_PATH"),
                 str(_DEFAULT_CARDPACK_CONFIG_DIRECTORY / "sets.json"),
@@ -142,6 +163,13 @@ def _require_value(environment: Mapping[str, str], name: str) -> str:
     if not value:
         raise InvalidConfigurationError(f"{name} is required")
     return value
+
+
+def _parse_bot_mode(value: str) -> BotMode:
+    try:
+        return BotMode(value.strip().lower())
+    except ValueError as error:
+        raise InvalidConfigurationError("BOT_MODE must be test or production") from error
 
 
 def _parse_positive_integer(value: str, name: str) -> int:

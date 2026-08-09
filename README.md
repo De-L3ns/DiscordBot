@@ -48,6 +48,19 @@ PYTHONPATH=src python -m kletserbot
 The `.env` file is ignored by Git. Never commit real tokens or API
 credentials.
 
+For a live local Discord test bot, create a separate Discord application and
+test guild. Copy `.env.testbot.example` to `.env.testbot`, fill in test-only
+credentials and IDs, then run:
+
+```bash
+docker compose --env-file .env.testbot up --build --detach
+```
+
+The test profile requires `BOT_MODE=test` and a
+`DISCORD_DEVELOPMENT_GUILD_ID`; it uses guild-scoped slash commands and a
+separate persistent card-pack volume. Production uses `BOT_MODE=production`
+and must leave the development guild blank.
+
 ## Discord configuration
 
 The Discord application must be installed with the `bot` and
@@ -59,9 +72,10 @@ assigns and must have permission to:
 - Read reactions.
 - Manage roles.
 
-Set `DISCORD_DEVELOPMENT_GUILD_ID` during development to synchronize slash
-commands immediately to one guild. Without it, the bot uses global command
-synchronization, which can take longer to appear in Discord.
+The local test bot requires `DISCORD_DEVELOPMENT_GUILD_ID` to synchronize slash
+commands immediately to its dedicated test guild. Production leaves this value
+blank and uses global command synchronization, which can take longer to appear
+in Discord.
 
 The reaction-role message uses the reaction emoji's name as the Discord role
 name, preserving the existing behavior.
@@ -69,11 +83,14 @@ name, preserving the existing behavior.
 ## Configuration
 
 All supported variables and safe examples are listed in
-[`.env.example`](.env.example).
+[`.env.example`](.env.example), [`.env.testbot.example`](.env.testbot.example),
+and [`.env.production.example`](.env.production.example).
 
 Important feature controls:
 
 - `BOT_TIMEZONE` defaults to `Europe/Brussels`.
+- `BOT_MODE` is required: use `test` locally with a development guild, or
+  `production` in the hosted environment without one.
 - `ENABLE_WIELERMANAGER_POLLING` defaults to `false`.
 - `WIELERMANAGER_CHANNEL_ID` is required only when polling is enabled.
 - `WIELERMANAGER_POLL_INTERVAL_MINUTES` defaults to `15`.
@@ -114,8 +131,9 @@ successful poll establishes an in-memory baseline and sends no alert.
 
 ## Docker
 
-The Compose service automatically reads the repository-root `.env` file
-without copying it into the image.
+The Compose service reads the selected runtime environment file without copying
+it into the image. The default command uses `.env`; the test-bot command uses
+`.env.testbot`.
 
 Build and start the bot:
 

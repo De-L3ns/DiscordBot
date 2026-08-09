@@ -1,5 +1,9 @@
 .DS_Store
 .env
+.env.*
+!.env.example
+!.env.testbot.example
+!.env.production.example
 venv/
 .venv312/
 !test_kletser.py
@@ -13,3 +17,5 @@ __pycache__/
 .coverage
 htmlcov/
 /data/cardpacks/
+/exports/
+/setup guide/
