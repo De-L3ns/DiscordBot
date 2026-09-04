@@ -1,7 +1,12 @@
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 from kletserbot.apps.cardpacks.application.dto.available_card_set_dto import (
     AvailableCardSetDto,
+)
+from kletserbot.apps.cardpacks.application.dto.cardshop_dto import (
+    DailyPointClaimDto,
+    PointGrantDto,
 )
 from kletserbot.apps.cardpacks.application.dto.collection_card_dto import CollectionSetDto
 from kletserbot.apps.cardpacks.application.dto.opened_card_dto import OpenedCardDto
@@ -16,6 +21,13 @@ class FakeCardpackService:
     ) -> None:
         self.inventory = inventory
         self.gifts: list[tuple[int, str, int]] = []
+        self.point_grants: list[tuple[int, int, int]] = []
+        self.daily_claim = DailyPointClaimDto(
+            was_claimed=True,
+            awarded_points=1_000,
+            point_balance=1_000,
+            next_claim_at_utc=datetime(2026, 9, 5, tzinfo=UTC),
+        )
 
     async def initialize(self) -> None:
         return None
@@ -32,6 +44,9 @@ class FakeCardpackService:
             AvailableCardSetDto(
                 set_id="base1",
                 set_name="Base Set",
+                shop_price=600,
+                shop_description="De nostalgische base set",
+                pack_image_asset="card-pack-image-baseset.jpg",
             ),
         )
 
@@ -42,6 +57,19 @@ class FakeCardpackService:
         amount: int,
     ) -> None:
         self.gifts.append((discord_user_id, set_id, amount))
+
+    async def claim_daily_points(self, discord_user_id: int) -> DailyPointClaimDto:
+        del discord_user_id
+        return self.daily_claim
+
+    async def gift_points(
+        self,
+        actor_discord_user_id: int,
+        recipient_discord_user_id: int,
+        amount: int,
+    ) -> PointGrantDto:
+        self.point_grants.append((actor_discord_user_id, recipient_discord_user_id, amount))
+        return PointGrantDto(granted_points=amount, point_balance=amount)
 
     async def retrieve_collection_sets(
         self,
@@ -92,9 +120,11 @@ class FakeBot:
 def test_cardpack_commands_are_declared_with_admin_default() -> None:
     commands = {command.name: command for command in CardpacksCog.__cog_app_commands__}
 
-    assert set(commands) == {"packs", "giftpack", "collection"}
+    assert set(commands) == {"packs", "giftpack", "collection", "daily", "giftpoints"}
     assert commands["giftpack"].default_permissions is not None
     assert commands["giftpack"].default_permissions.administrator is True
+    assert commands["giftpoints"].default_permissions is not None
+    assert commands["giftpoints"].default_permissions.administrator is True
 
 
 async def test_packs_reports_empty_inventory_ephemerally() -> None:
@@ -195,6 +225,72 @@ async def test_non_administrator_cannot_gift_packs() -> None:
         "Je hebt beheerdersrechten nodig voor dit commando.",
         ephemeral=True,
     )
+
+
+async def test_daily_claim_responds_ephemerally() -> None:
+    cog = CardpacksCog(FakeCardpackService())  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123)
+
+    await cog.daily.callback(cog, interaction)  # type: ignore[arg-type]
+
+    call = interaction.response.send_message.await_args
+    assert call.kwargs["ephemeral"] is True
+    assert "1,000 punten" in call.args[0]
+
+
+async def test_daily_claim_explains_when_the_next_claim_is_available() -> None:
+    service = FakeCardpackService()
+    service.daily_claim = DailyPointClaimDto(
+        was_claimed=False,
+        awarded_points=0,
+        point_balance=1_000,
+        next_claim_at_utc=datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    cog = CardpacksCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123)
+
+    await cog.daily.callback(cog, interaction)  # type: ignore[arg-type]
+
+    call = interaction.response.send_message.await_args
+    assert "vandaag al opgehaald" in call.args[0]
+    assert "<t:1788566400:R>" in call.args[0]
+
+
+async def test_non_administrator_cannot_gift_points() -> None:
+    service = FakeCardpackService()
+    cog = CardpacksCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123, is_administrator=False)
+
+    await cog.giftpoints.callback(  # type: ignore[arg-type]
+        cog,
+        interaction,
+        FakeUser(456),
+        100,
+    )
+
+    assert service.point_grants == []
+    interaction.response.send_message.assert_awaited_once_with(
+        "Je hebt beheerdersrechten nodig voor dit commando.",
+        ephemeral=True,
+    )
+
+
+async def test_administrator_can_gift_points() -> None:
+    service = FakeCardpackService()
+    cog = CardpacksCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(user_id=123, is_administrator=True)
+
+    await cog.giftpoints.callback(  # type: ignore[arg-type]
+        cog,
+        interaction,
+        FakeUser(456),
+        250,
+    )
+
+    assert service.point_grants == [(123, 456, 250)]
+    call = interaction.response.send_message.await_args
+    assert call.kwargs["ephemeral"] is True
+    assert "250 punten" in call.args[0]
 
 
 async def test_administrator_can_gift_packs() -> None:

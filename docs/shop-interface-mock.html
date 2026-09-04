@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KletserBot &middot; Shared Pack Shop mock</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #111217;
+        --channel: #313338;
+        --panel: #2b2d31;
+        --panel-light: #35373c;
+        --text: #f2f3f5;
+        --muted: #b5bac1;
+        --purple: #5865f2;
+        --purple-hover: #4752c4;
+        --gold: #f0b232;
+        --green: #23a559;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        background: radial-gradient(circle at top, #25283a 0, var(--page) 48rem);
+        color: var(--text);
+        font-family: "gg sans", "Noto Sans", Arial, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        padding: 32px 18px;
+      }
+
+      .discord-window {
+        background: var(--channel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+        margin: 0 auto;
+        max-width: 970px;
+        overflow: hidden;
+      }
+
+      .channel-bar {
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        font-weight: 700;
+        gap: 10px;
+        min-height: 52px;
+        padding: 10px 20px;
+      }
+
+      .lock { color: var(--muted); font-size: 18px; }
+      .channel-hint { color: var(--muted); font-size: 13px; font-weight: 400; }
+      .content { padding: 30px; }
+      .bot-message { align-items: flex-start; display: flex; gap: 15px; }
+
+      .avatar {
+        align-items: center;
+        background: linear-gradient(145deg, #f0b232, #ca7e15);
+        border-radius: 50%;
+        color: #312206;
+        display: flex;
+        flex: 0 0 42px;
+        font-size: 22px;
+        font-weight: 900;
+        height: 42px;
+        justify-content: center;
+      }
+
+      .message { min-width: 0; width: 100%; }
+      .author { font-size: 15px; font-weight: 600; margin: 3px 0 8px; }
+      .bot-tag {
+        background: var(--purple);
+        border-radius: 4px;
+        font-size: 10px;
+        margin-left: 5px;
+        padding: 2px 4px;
+        vertical-align: 2px;
+      }
+      .timestamp { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 7px; }
+
+      .shop-card {
+        background: var(--panel);
+        border-left: 4px solid var(--purple);
+        border-radius: 4px;
+        max-width: 760px;
+        overflow: hidden;
+      }
+
+      .shop-heading { padding: 20px 20px 8px; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      .intro { color: var(--muted); font-size: 14px; line-height: 1.45; margin: 0; }
+
+      .packs { display: grid; gap: 12px; padding: 12px 20px 20px; }
+      .pack {
+        align-items: center;
+        background: var(--panel-light);
+        border: 1px solid transparent;
+        border-radius: 10px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 70px 1fr auto;
+        padding: 11px;
+        text-align: left;
+        width: 100%;
+      }
+      button.pack { cursor: pointer; transition: border-color 0.16s, transform 0.16s; }
+      button.pack:hover, button.pack.selected { border-color: #8b95ff; transform: translateY(-1px); }
+      .pack img { border-radius: 6px; height: 92px; object-fit: contain; width: 70px; }
+      .pack-name { display: block; font-size: 16px; font-weight: 700; }
+      .pack-copy { color: var(--muted); display: block; font-size: 13px; margin-top: 5px; }
+      .price { color: #ffd978; font-size: 15px; font-weight: 800; white-space: nowrap; }
+
+      .launcher-actions, .controls {
+        align-items: center;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 17px 20px 20px;
+      }
+
+      button {
+        background: var(--purple);
+        border: 0;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        min-height: 36px;
+        padding: 0 14px;
+      }
+      button:hover { background: var(--purple-hover); }
+      .secondary { background: #4e5058; }
+      .secondary:hover { background: #5d6069; }
+      .buy { background: var(--green); margin-left: 6px; }
+      .buy:hover { background: #1c8a4b; }
+      .quantity { background: #202225; cursor: default; min-width: 40px; text-align: center; }
+
+      .shared-note, .private-note {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 12px 0 0 57px;
+        max-width: 760px;
+      }
+
+      .private-response { display: none; margin-top: 30px; }
+      .private-response.visible { display: block; }
+      .private-banner {
+        align-items: center;
+        color: #c9cdfb;
+        display: flex;
+        font-size: 12px;
+        gap: 9px;
+        margin: 0 0 10px 57px;
+      }
+      .private-banner::before, .private-banner::after {
+        background: rgba(139, 149, 255, 0.3);
+        content: "";
+        height: 1px;
+      }
+      .private-banner::before { width: 28px; }
+      .private-banner::after { flex: 1; max-width: 570px; }
+
+      .balance {
+        align-items: center;
+        background: rgba(240, 178, 50, 0.11);
+        border: 1px solid rgba(240, 178, 50, 0.28);
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        margin: 15px 20px 8px;
+        padding: 12px 14px;
+      }
+      .balance-label { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+      .points { color: #ffd978; font-size: 20px; font-weight: 800; }
+
+      .purchase {
+        border-top: 1px solid var(--border);
+        display: grid;
+        gap: 13px;
+        grid-template-columns: 1fr auto;
+        padding: 17px 20px 20px;
+      }
+      .selection-label { color: var(--muted); font-size: 12px; }
+      .selection-name { font-size: 15px; font-weight: 700; margin-top: 4px; }
+      .purchase .controls { border: 0; grid-row: span 2; padding: 0; }
+
+      .notice {
+        background: rgba(35, 165, 89, 0.14);
+        border: 1px solid rgba(35, 165, 89, 0.36);
+        border-radius: 6px;
+        color: #8ee3b3;
+        display: none;
+        font-size: 13px;
+        margin-top: 14px;
+        max-width: 760px;
+        padding: 10px 12px;
+      }
+      .notice.visible { display: block; }
+      .notice.error { background: rgba(237, 66, 69, 0.14); border-color: rgba(237, 66, 69, 0.36); color: #ffb5b7; }
+
+      @media (max-width: 650px) {
+        .content { padding: 20px 13px; }
+        .channel-hint { display: none; }
+        .pack { grid-template-columns: 54px 1fr; }
+        .pack img { height: 72px; width: 54px; }
+        .price { grid-column: 2; }
+        .purchase { grid-template-columns: 1fr; }
+        .purchase .controls { grid-row: auto; justify-content: flex-start; }
+        .shared-note, .private-note, .private-banner { margin-left: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="discord-window" aria-label="Discord shared shop and private response mock">
+      <div class="channel-bar">
+        <span class="lock" aria-hidden="true">&#128274;</span>
+        <span>pack-shop</span>
+        <span class="channel-hint">Browse packs and spend your KletserBot points.</span>
+      </div>
+      <section class="content">
+        <article class="bot-message">
+          <div class="avatar">K</div>
+          <div class="message">
+            <div class="author">KletserBot <span class="bot-tag">APP</span><span class="timestamp">Vandaag om 12:00</span></div>
+            <div class="shop-card">
+              <div class="shop-heading">
+                <h1>Pokemon Pack shop</h1>
+                <p class="intro">Hieronder kan je alle packs vinden die momenteel kunnen worden gekocht. Klik op de knop 'Packs kopen' om je huidig saldo te zien en te selecteren welke pack(s) je wilt kopen. Klik op Claim daily om je dagelijkse punten te krijgen.</p>
+              </div>
+              <div class="packs" aria-label="Publieke packcatalogus">
+                <div class="pack">
+                  <img src="../src/kletserbot/apps/cardpacks/assets/discord/card-pack-image-151.webp" alt="Scarlet &amp; Violet&mdash;151 pack art" />
+                  <span><span class="pack-name">Scarlet &amp; Violet&mdash;151</span><span class="pack-copy">De moderne, special 151 set</span></span>
+                  <span class="price">400 punten</span>
+                </div>
+                <div class="pack">
+                  <img src="../src/kletserbot/apps/cardpacks/assets/discord/card-pack-image-baseset.jpg" alt="Base Set pack art" />
+                  <span><span class="pack-name">Base Set</span><span class="pack-copy">De nostalgische base set</span></span>
+                  <span class="price">600 punten</span>
+                </div>
+              </div>
+              <div class="launcher-actions">
+                <button id="open-shop" type="button">Packs kopen</button>
+                <button class="secondary" id="claim-daily" type="button">Claim daily</button>
+              </div>
+            </div>
+          </div>
+        </article>
+        <p class="shared-note"><strong>Gedeelde launcher:</strong> iedereen ziet dit vaste bericht, zonder iemands saldo te zien.</p>
+
+        <section class="private-response" id="private-response" aria-live="polite">
+          <div class="private-banner">Alleen zichtbaar voor jou</div>
+          <article class="bot-message">
+            <div class="avatar">K</div>
+            <div class="message">
+              <div class="author">KletserBot <span class="bot-tag">APP</span><span class="timestamp">zojuist</span></div>
+              <div class="shop-card">
+                <div class="shop-heading">
+                  <h1>Packs kopen</h1>
+                  <p class="intro">Het saldo en de bediening hieronder zijn alleen zichtbaar voor de gebruiker die de launcher opende.</p>
+                </div>
+                <div class="balance">
+                  <span class="balance-label">Jouw saldo</span>
+                  <span class="points"><span id="balance">1,000</span> punten</span>
+                </div>
+                <div class="packs" aria-label="Selecteerbare packsets">
+                  <button class="pack selected" data-name="Scarlet &amp; Violet&mdash;151" data-price="400" type="button">
+                    <img src="../src/kletserbot/apps/cardpacks/assets/discord/card-pack-image-151.webp" alt="Scarlet &amp; Violet&mdash;151 pack art" />
+                    <span><span class="pack-name">Scarlet &amp; Violet&mdash;151</span><span class="pack-copy">Selecteer deze set.</span></span>
+                    <span class="price">400 punten</span>
+                  </button>
+                  <button class="pack" data-name="Base Set" data-price="600" type="button">
+                    <img src="../src/kletserbot/apps/cardpacks/assets/discord/card-pack-image-baseset.jpg" alt="Base Set pack art" />
+                    <span><span class="pack-name">Base Set</span><span class="pack-copy">Selecteer deze set.</span></span>
+                    <span class="price">600 punten</span>
+                  </button>
+                </div>
+                <div class="purchase">
+                  <div>
+                    <div class="selection-label">Geselecteerde aankoop</div>
+                    <div class="selection-name" id="selected-name">1 &times; Scarlet &amp; Violet&mdash;151 &middot; 400 punten totaal</div>
+                  </div>
+                  <div class="controls">
+                    <button class="secondary" id="decrease" type="button" aria-label="Verminder aantal">&minus;</button>
+                    <button class="quantity" id="quantity" type="button" aria-label="Geselecteerd aantal">1</button>
+                    <button class="secondary" id="increase" type="button" aria-label="Verhoog aantal">+</button>
+                    <button class="buy" id="buy" type="button">Packs kopen</button>
+                  </div>
+                </div>
+              </div>
+              <div class="notice" id="notice" role="status"></div>
+            </div>
+          </article>
+          <p class="private-note">In Discord is deze reactie privé: andere leden kunnen ze niet zien en krijgen hun eigen saldo te zien.</p>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const privateResponse = document.querySelector('#private-response');
+      const packs = document.querySelectorAll('#private-response button.pack');
+      const balance = document.querySelector('#balance');
+      const selectedName = document.querySelector('#selected-name');
+      const quantity = document.querySelector('#quantity');
+      const notice = document.querySelector('#notice');
+      let selected = packs[0];
+      let amount = 1;
+      let dailyClaimed = false;
+
+      function numericBalance() {
+        return Number(balance.textContent.replaceAll(',', ''));
+      }
+
+      function showPrivateResponse() {
+        privateResponse.classList.add('visible');
+        privateResponse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function showNotice(message, isError = false) {
+        notice.textContent = message;
+        notice.classList.toggle('error', isError);
+        notice.classList.add('visible');
+      }
+
+      function updateSelection() {
+        const price = Number(selected.dataset.price);
+        const total = price * amount;
+        selectedName.innerHTML = `${amount} &times; ${selected.dataset.name} &middot; ${total.toLocaleString()} punten totaal`;
+        quantity.textContent = amount;
+      }
+
+      document.querySelector('#open-shop').addEventListener('click', () => {
+        showPrivateResponse();
+        notice.classList.remove('visible');
+      });
+
+      document.querySelector('#claim-daily').addEventListener('click', () => {
+        showPrivateResponse();
+        if (dailyClaimed) {
+          showNotice('Je hebt je dagelijkse punten vandaag al opgehaald.', true);
+          return;
+        }
+        dailyClaimed = true;
+        balance.textContent = (numericBalance() + 1000).toLocaleString();
+        showNotice('Je dagelijkse 1,000 punten zijn toegevoegd aan je saldo.');
+      });
+
+      packs.forEach((pack) => pack.addEventListener('click', () => {
+        selected.classList.remove('selected');
+        selected = pack;
+        selected.classList.add('selected');
+        notice.classList.remove('visible');
+        updateSelection();
+      }));
+
+      document.querySelector('#decrease').addEventListener('click', () => {
+        amount = Math.max(1, amount - 1);
+        updateSelection();
+      });
+
+      document.querySelector('#increase').addEventListener('click', () => {
+        amount = Math.min(10, amount + 1);
+        updateSelection();
+      });
+
+      document.querySelector('#buy').addEventListener('click', () => {
+        const total = Number(selected.dataset.price) * amount;
+        const currentBalance = numericBalance();
+        if (total > currentBalance) {
+          showNotice(`You need ${(total - currentBalance).toLocaleString()} more points for this purchase.`, true);
+          return;
+        }
+        balance.textContent = (currentBalance - total).toLocaleString();
+        showNotice(`Success! ${amount} &times; ${selected.dataset.name} was added to your inventory.`);
+      });
+    </script>
+  </body>
+</html>

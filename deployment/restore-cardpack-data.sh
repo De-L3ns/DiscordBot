@@ -38,6 +38,7 @@ archive_volume() {
     local destination_archive_path="$1"
 
     docker run --rm \
+        --user 0:0 \
         --network none \
         --entrypoint tar \
         --volume "${production_volume_name}:/data:ro" \

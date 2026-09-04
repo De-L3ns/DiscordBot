@@ -1,0 +1,9 @@
+from typing import Protocol
+
+
+class CardshopMessageRepository(Protocol):
+    async def initialize(self) -> None: ...
+
+    async def retrieve_message_id(self, channel_id: int) -> int | None: ...
+
+    async def store_message_id(self, channel_id: int, message_id: int) -> None: ...

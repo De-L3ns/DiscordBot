@@ -6,6 +6,9 @@ import aiohttp
 from discord.ext import commands
 
 from kletserbot.apps.cardpacks.application.cardpack_service import CardpackService
+from kletserbot.apps.cardpacks.application.cardshop_message_service import (
+    CardshopMessageService,
+)
 from kletserbot.apps.cardpacks.domain.pack_generator import PackGenerator
 from kletserbot.apps.cardpacks.infrastructure.cached_pokemon_card_catalog import (
     CachedPokemonCardCatalog,
@@ -18,6 +21,12 @@ from kletserbot.apps.cardpacks.infrastructure.json_pokemon_card_cache import (
 )
 from kletserbot.apps.cardpacks.infrastructure.pokemon_tcg_client import (
     PokemonTcgClient,
+)
+from kletserbot.apps.cardpacks.infrastructure.sqlite_cardpack_economy_repository import (
+    SqliteCardpackEconomyRepository,
+)
+from kletserbot.apps.cardpacks.infrastructure.sqlite_cardshop_message_repository import (
+    SqliteCardshopMessageRepository,
 )
 from kletserbot.apps.cardpacks.infrastructure.sqlite_pack_inventory_repository import (
     SqlitePackInventoryRepository,
@@ -95,9 +104,15 @@ def create_bot(
         inventory_repository=SqlitePackInventoryRepository(
             settings.cardpack_data_directory / "inventory.sqlite3"
         ),
+        economy_repository=SqliteCardpackEconomyRepository(
+            settings.cardpack_data_directory / "inventory.sqlite3"
+        ),
         pack_generator=PackGenerator(),
         random_value=random.random,
         select_card=_select_random,
+        daily_points=settings.cardpack_daily_points,
+        local_date_provider=lambda: datetime.now(settings.bot_timezone).date(),
+        utc_now_provider=_utc_now,
     )
 
     birthday_service = BirthdayService(
@@ -130,6 +145,12 @@ def create_bot(
             cardpack_service,
             bot=bot,
             hit_channel_id=settings.cardpack_hit_channel_id,
+            shop_channel_id=settings.cardpack_shop_channel_id,
+            cardshop_message_service=CardshopMessageService(
+                SqliteCardshopMessageRepository(
+                    settings.cardpack_data_directory / "inventory.sqlite3"
+                )
+            ),
         ),
         GeneralCog(
             quote_service=quote_service,

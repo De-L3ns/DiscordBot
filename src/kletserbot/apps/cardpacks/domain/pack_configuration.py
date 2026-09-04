@@ -98,6 +98,8 @@ class CardSetConfiguration:
     set_id: str
     name: str
     pack_image_asset: str
+    shop_price: int
+    shop_description: str
     slots: tuple[PackSlotConfiguration, ...]
     energy_set_id: str | None = None
     energy_card_ids: tuple[str, ...] = ()
@@ -109,6 +111,12 @@ class CardSetConfiguration:
             raise InvalidPackConfigurationError("set name must not be empty")
         if not self.pack_image_asset.strip():
             raise InvalidPackConfigurationError("pack image asset must not be empty")
+        if not 1 <= self.shop_price <= 1_000_000:
+            raise InvalidPackConfigurationError("shop price must be between 1 and 1000000")
+        if not self.shop_description.strip() or len(self.shop_description.strip()) > 100:
+            raise InvalidPackConfigurationError(
+                "shop description must contain between 1 and 100 characters"
+            )
         if not self.slots:
             raise InvalidPackConfigurationError("card set requires at least one slot")
         if self.energy_set_id is not None and not self.energy_set_id.strip():

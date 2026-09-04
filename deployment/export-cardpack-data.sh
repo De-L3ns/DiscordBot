@@ -80,6 +80,7 @@ readonly archive_path="${export_directory}/cardpack-data-${archive_timestamp}.ta
 compose_command stop "${service_name}"
 trap restart_service EXIT
 docker run --rm \
+    --user 0:0 \
     --network none \
     --entrypoint tar \
     --volume "${production_volume_name}:/data:ro" \

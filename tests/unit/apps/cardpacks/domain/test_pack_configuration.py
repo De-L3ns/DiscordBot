@@ -76,5 +76,7 @@ def test_card_set_requires_a_pack_image_asset() -> None:
             set_id="base1",
             name="Base Set",
             pack_image_asset="",
+            shop_price=600,
+            shop_description="De nostalgische base set",
             slots=(slot,),
         )

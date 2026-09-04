@@ -110,6 +110,8 @@ def configuration_151() -> CardSetConfiguration:
         set_id="sv3pt5",
         name="Scarlet & Violet—151",
         pack_image_asset="card-pack-image-151.webp",
+        shop_price=400,
+        shop_description="De moderne, special 151 set",
         slots=(
             *(fixed_slot("Common") for _ in range(4)),
             *(fixed_slot("Uncommon") for _ in range(3)),

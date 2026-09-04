@@ -2,12 +2,23 @@ import asyncio
 import logging
 import re
 from collections.abc import Callable, Sequence
+from datetime import UTC, date, datetime, time, timedelta
 
 from kletserbot.apps.cardpacks.application.card_set_configuration_provider import (
     CardSetConfigurationProvider,
 )
+from kletserbot.apps.cardpacks.application.cardpack_economy_repository import (
+    CardpackEconomyRepository,
+)
 from kletserbot.apps.cardpacks.application.dto.available_card_set_dto import (
     AvailableCardSetDto,
+)
+from kletserbot.apps.cardpacks.application.dto.cardshop_dto import (
+    CardshopDto,
+    CardshopProductDto,
+    DailyPointClaimDto,
+    PackPurchaseDto,
+    PointGrantDto,
 )
 from kletserbot.apps.cardpacks.application.dto.collection_card_dto import (
     AlbumCardDto,
@@ -19,9 +30,13 @@ from kletserbot.apps.cardpacks.application.dto.opened_pack_dto import OpenedPack
 from kletserbot.apps.cardpacks.application.dto.owned_pack_dto import OwnedPackDto
 from kletserbot.apps.cardpacks.application.exceptions import (
     CardpackConfigurationError,
+    CardpackPersistenceError,
     CardSetUnavailableError,
     InsufficientPackInventoryError,
+    InsufficientPointsError,
     InvalidGiftAmountError,
+    InvalidPackPurchaseAmountError,
+    InvalidPointGrantAmountError,
 )
 from kletserbot.apps.cardpacks.application.pack_inventory_repository import (
     PackInventoryRepository,
@@ -41,6 +56,8 @@ from kletserbot.shared.application.exceptions import ApplicationError
 logger = logging.getLogger(__name__)
 
 _MAX_GIFT_AMOUNT = 100
+_MAX_PURCHASE_AMOUNT = 10
+_MAX_POINT_GRANT_AMOUNT = 1_000_000
 
 
 class CardpackService:
@@ -50,21 +67,33 @@ class CardpackService:
         configuration_provider: CardSetConfigurationProvider,
         card_catalog: PokemonCardCatalogGateway,
         inventory_repository: PackInventoryRepository,
+        economy_repository: CardpackEconomyRepository | None = None,
         pack_generator: PackGenerator,
         random_value: Callable[[], float],
         select_card: Callable[[Sequence[PokemonCard]], PokemonCard],
+        daily_points: int = 1_000,
+        local_date_provider: Callable[[], date] | None = None,
+        utc_now_provider: Callable[[], datetime] | None = None,
     ) -> None:
         self._configuration_provider = configuration_provider
         self._card_catalog = card_catalog
         self._inventory_repository = inventory_repository
+        self._economy_repository = economy_repository
         self._pack_generator = pack_generator
         self._random_value = random_value
         self._select_card = select_card
+        if not 1 <= daily_points <= _MAX_POINT_GRANT_AMOUNT:
+            raise ValueError("daily points must be between 1 and 1000000")
+        self._daily_points = daily_points
+        self._local_date_provider = local_date_provider or _current_utc_date
+        self._utc_now_provider = utc_now_provider or _utc_now
         self._available_configurations: dict[str, CardSetConfiguration] = {}
         self._cards_by_source_set_id: dict[str, tuple[PokemonCard, ...]] = {}
 
     async def initialize(self) -> None:
         await self._inventory_repository.initialize()
+        if self._economy_repository is not None:
+            await self._economy_repository.initialize()
         try:
             configurations = await asyncio.to_thread(
                 self._configuration_provider.retrieve_configurations
@@ -114,9 +143,98 @@ class CardpackService:
             AvailableCardSetDto(
                 set_id=configuration.set_id,
                 set_name=configuration.name,
+                shop_price=configuration.shop_price,
+                shop_description=configuration.shop_description,
+                pack_image_asset=configuration.pack_image_asset,
             )
             for configuration in self._available_configurations.values()
         )
+
+    async def retrieve_cardshop(self, discord_user_id: int) -> CardshopDto:
+        economy_repository = self._require_economy_repository()
+        point_balance, inventory = await asyncio.gather(
+            economy_repository.retrieve_point_balance(discord_user_id),
+            self._inventory_repository.retrieve_inventory(discord_user_id),
+        )
+        quantities_by_set_id = {
+            entry.set_id: entry.quantity for entry in inventory if entry.quantity > 0
+        }
+        products = tuple(
+            CardshopProductDto(
+                set_id=configuration.set_id,
+                set_name=configuration.name,
+                description=configuration.shop_description,
+                price=configuration.shop_price,
+                pack_image_asset=configuration.pack_image_asset,
+                owned_quantity=quantities_by_set_id.get(configuration.set_id, 0),
+            )
+            for configuration in self._available_configurations.values()
+        )
+        return CardshopDto(point_balance=point_balance, products=products)
+
+    async def purchase_packs(
+        self,
+        discord_user_id: int,
+        set_id: str,
+        quantity: int,
+    ) -> PackPurchaseDto:
+        if not 1 <= quantity <= _MAX_PURCHASE_AMOUNT:
+            raise InvalidPackPurchaseAmountError(
+                f"purchase amount must be between 1 and {_MAX_PURCHASE_AMOUNT}"
+            )
+        configuration = self._require_available_configuration(set_id)
+        total_price = configuration.shop_price * quantity
+        remaining_balance = await self._require_economy_repository().purchase_packs(
+            discord_user_id,
+            set_id,
+            quantity,
+            total_price,
+            self._utc_now_provider(),
+        )
+        if remaining_balance is None:
+            raise InsufficientPointsError("the user does not have enough cardshop points")
+        return PackPurchaseDto(
+            set_id=set_id,
+            set_name=configuration.name,
+            quantity=quantity,
+            total_price=total_price,
+            remaining_balance=remaining_balance,
+        )
+
+    async def claim_daily_points(self, discord_user_id: int) -> DailyPointClaimDto:
+        claim_date = self._local_date_provider()
+        mutation = await self._require_economy_repository().claim_daily_points(
+            discord_user_id,
+            claim_date,
+            self._daily_points,
+            self._utc_now_provider(),
+        )
+        return DailyPointClaimDto(
+            was_claimed=mutation.was_applied,
+            awarded_points=self._daily_points if mutation.was_applied else 0,
+            point_balance=mutation.point_balance,
+            next_claim_at_utc=datetime.combine(
+                claim_date + timedelta(days=1), time.min, tzinfo=UTC
+            ),
+        )
+
+    async def gift_points(
+        self,
+        actor_discord_user_id: int,
+        recipient_discord_user_id: int,
+        amount: int,
+    ) -> PointGrantDto:
+        if not 1 <= amount <= _MAX_POINT_GRANT_AMOUNT:
+            raise InvalidPointGrantAmountError(
+                f"point grant must be between 1 and {_MAX_POINT_GRANT_AMOUNT}"
+            )
+        point_balance = await self._require_economy_repository().grant_points(
+            recipient_discord_user_id,
+            actor_discord_user_id,
+            amount,
+            self._utc_now_provider(),
+        )
+        return PointGrantDto(granted_points=amount, point_balance=point_balance)
 
     async def retrieve_inventory(
         self,
@@ -327,6 +445,11 @@ class CardpackService:
             raise CardSetUnavailableError(f"card set is currently unavailable: {set_id}")
         return configuration
 
+    def _require_economy_repository(self) -> CardpackEconomyRepository:
+        if self._economy_repository is None:
+            raise CardpackPersistenceError("cardpack point economy has not been configured")
+        return self._economy_repository
+
 
 def _card_number_sort_key(number: str) -> tuple[tuple[int, int | str], ...]:
     return tuple(
@@ -358,3 +481,11 @@ def _map_opened_pack(
             for opened_card in opened_pack.cards
         ),
     )
+
+
+def _current_utc_date() -> date:
+    return datetime.now(UTC).date()
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)

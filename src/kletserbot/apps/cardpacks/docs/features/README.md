@@ -6,3 +6,4 @@
 - [Cardpack UI implementation](IMPLEMENTATION-PLAN-002-Cardpack-ui.md)
 - [Card pagination implementation](IMPLEMENTATION-PLAN-003-Card-pagination.md)
 - [Code cleanup implementation](IMPLEMENTATION-PLAN-004-Code-cleanup.md)
+- [Cardshop and points implementation](IMPLEMENTATION-PLAN-005-Cardshop-points.md)

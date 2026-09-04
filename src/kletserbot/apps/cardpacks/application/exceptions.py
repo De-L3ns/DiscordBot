@@ -27,3 +27,15 @@ class InvalidGiftAmountError(CardpackError):
 
 class InsufficientPackInventoryError(CardpackError):
     """Raised when a user no longer owns the pack being opened."""
+
+
+class InvalidPackPurchaseAmountError(CardpackError):
+    """Raised when a requested cardshop pack quantity is unsupported."""
+
+
+class InsufficientPointsError(CardpackError):
+    """Raised when a user cannot afford a cardshop purchase."""
+
+
+class InvalidPointGrantAmountError(CardpackError):
+    """Raised when an administrator grant is outside the supported range."""
