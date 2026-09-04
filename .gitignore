@@ -17,5 +17,6 @@ __pycache__/
 .coverage
 htmlcov/
 /data/cardpacks/
+/backups/
 /exports/
 /setup guide/
