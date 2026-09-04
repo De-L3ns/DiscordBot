@@ -102,6 +102,8 @@ def _parse_configuration(
             "id",
             "name",
             "packImageAsset",
+            "shopPrice",
+            "shopDescription",
             "energySetId",
             "energyCardIds",
         },
@@ -118,6 +120,17 @@ def _parse_configuration(
     if len(set(energy_card_ids)) != len(energy_card_ids):
         raise InvalidPackConfigurationError("energyCardIds must be unique")
     name = _require_string(configured_set.get("name"), "set name", maximum_length=100)
+    shop_price = _require_integer(
+        configured_set.get("shopPrice"),
+        "shop price",
+        minimum=1,
+        maximum=1_000_000,
+    )
+    shop_description = _require_string(
+        configured_set.get("shopDescription"),
+        "shop description",
+        maximum_length=100,
+    )
     pack_image_asset = _require_string(
         configured_set.get("packImageAsset"),
         "pack image asset",
@@ -167,6 +180,8 @@ def _parse_configuration(
         set_id=set_id,
         name=name,
         pack_image_asset=pack_image_asset,
+        shop_price=shop_price,
+        shop_description=shop_description,
         slots=tuple(slots),
         energy_set_id=energy_set_id,
         energy_card_ids=energy_card_ids,

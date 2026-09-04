@@ -176,7 +176,32 @@ def test_cardpack_settings_have_safe_packaged_defaults(
     assert settings.cardpack_pull_rates_path.name == "pull_rates.json"
     assert settings.cardpack_pull_rates_path.is_file()
     assert settings.cardpack_data_directory.parts[-2:] == ("data", "cardpacks")
+    assert settings.cardpack_shop_channel_id is None
+    assert settings.cardpack_daily_points == 1_000
     assert settings.pokemon_tcg_api_key is None
+
+
+def test_cardshop_settings_are_loaded_and_bounded(
+    valid_environment: dict[str, str],
+) -> None:
+    valid_environment["CARDPACK_SHOP_CHANNEL_ID"] = "400"
+    valid_environment["CARDPACK_DAILY_POINTS"] = "1200"
+
+    settings = ApplicationSettings.from_environment(valid_environment)
+
+    assert settings.cardpack_shop_channel_id == 400
+    assert settings.cardpack_daily_points == 1_200
+
+
+@pytest.mark.parametrize("value", ["0", "1000001", "invalid"])
+def test_cardshop_daily_points_must_be_bounded(
+    valid_environment: dict[str, str],
+    value: str,
+) -> None:
+    valid_environment["CARDPACK_DAILY_POINTS"] = value
+
+    with pytest.raises(InvalidConfigurationError, match="CARDPACK_DAILY_POINTS"):
+        ApplicationSettings.from_environment(valid_environment)
 
 
 def test_optional_pokemon_api_key_and_data_path_are_loaded(

@@ -1,8 +1,10 @@
 from collections.abc import Sequence
+from datetime import date, datetime
 
 import pytest
 
 from kletserbot.apps.cardpacks.application.cardpack_service import CardpackService
+from kletserbot.apps.cardpacks.application.dto.cardshop_dto import PointMutationResultDto
 from kletserbot.apps.cardpacks.application.dto.collection_card_dto import CollectionCardDto
 from kletserbot.apps.cardpacks.application.dto.pack_inventory_dto import (
     PackInventoryDto,
@@ -10,7 +12,10 @@ from kletserbot.apps.cardpacks.application.dto.pack_inventory_dto import (
 from kletserbot.apps.cardpacks.application.exceptions import (
     CardSetUnavailableError,
     InsufficientPackInventoryError,
+    InsufficientPointsError,
     InvalidGiftAmountError,
+    InvalidPackPurchaseAmountError,
+    InvalidPointGrantAmountError,
 )
 from kletserbot.apps.cardpacks.domain.pack_configuration import (
     CardFinish,
@@ -60,6 +65,8 @@ def configuration(
         set_id="base1",
         name="Base Set",
         pack_image_asset="card-pack-image-baseset.jpg",
+        shop_price=600,
+        shop_description="De nostalgische base set",
         slots=(
             PackSlotConfiguration(
                 outcomes=outcomes
@@ -178,6 +185,61 @@ class FakeInventoryRepository:
         return tuple(self.collected_cards)
 
 
+class FakeEconomyRepository:
+    def __init__(self, *, point_balance: int = 1_000) -> None:
+        self.point_balance = point_balance
+        self.initialize_calls = 0
+        self.claim_was_applied = True
+        self.purchase_calls: list[tuple[int, str, int, int]] = []
+        self.grant_calls: list[tuple[int, int, int]] = []
+
+    async def initialize(self) -> None:
+        self.initialize_calls += 1
+
+    async def retrieve_point_balance(self, discord_user_id: int) -> int:
+        del discord_user_id
+        return self.point_balance
+
+    async def claim_daily_points(
+        self,
+        discord_user_id: int,
+        claim_date: date,
+        points: int,
+        created_at_utc: datetime,
+    ) -> PointMutationResultDto:
+        del discord_user_id, claim_date, created_at_utc
+        if self.claim_was_applied:
+            self.point_balance += points
+        return PointMutationResultDto(self.claim_was_applied, self.point_balance)
+
+    async def grant_points(
+        self,
+        discord_user_id: int,
+        actor_discord_user_id: int,
+        points: int,
+        created_at_utc: datetime,
+    ) -> int:
+        del created_at_utc
+        self.grant_calls.append((discord_user_id, actor_discord_user_id, points))
+        self.point_balance += points
+        return self.point_balance
+
+    async def purchase_packs(
+        self,
+        discord_user_id: int,
+        set_id: str,
+        quantity: int,
+        total_price: int,
+        created_at_utc: datetime,
+    ) -> int | None:
+        del created_at_utc
+        self.purchase_calls.append((discord_user_id, set_id, quantity, total_price))
+        if total_price > self.point_balance:
+            return None
+        self.point_balance -= total_price
+        return self.point_balance
+
+
 def select_first(cards: Sequence[PokemonCard]) -> PokemonCard:
     return cards[0]
 
@@ -187,6 +249,7 @@ def create_service(
     configuration_provider: FakeConfigurationProvider | None = None,
     card_catalog: FakeCardCatalog | None = None,
     inventory_repository: FakeInventoryRepository | None = None,
+    economy_repository: FakeEconomyRepository | None = None,
 ) -> tuple[CardpackService, FakeCardCatalog, FakeInventoryRepository]:
     resolved_catalog = card_catalog or FakeCardCatalog()
     resolved_repository = inventory_repository or FakeInventoryRepository()
@@ -194,6 +257,7 @@ def create_service(
         configuration_provider=configuration_provider or FakeConfigurationProvider(),
         card_catalog=resolved_catalog,
         inventory_repository=resolved_repository,
+        economy_repository=economy_repository,
         pack_generator=PackGenerator(),
         random_value=lambda: 0.0,
         select_card=select_first,
@@ -348,6 +412,74 @@ async def test_failed_conditional_consumption_discards_generated_pack() -> None:
         await service.open_pack(discord_user_id=123, set_id="base1")
 
 
+async def test_cardshop_returns_balance_and_configured_products() -> None:
+    economy_repository = FakeEconomyRepository(point_balance=1_250)
+    inventory_repository = FakeInventoryRepository(
+        inventory=(PackInventoryDto(set_id="base1", quantity=3),)
+    )
+    service, _, _ = create_service(
+        economy_repository=economy_repository,
+        inventory_repository=inventory_repository,
+    )
+    await service.initialize()
+
+    cardshop = await service.retrieve_cardshop(123)
+
+    assert cardshop.point_balance == 1_250
+    assert cardshop.products[0].set_id == "base1"
+    assert cardshop.products[0].price == 600
+    assert cardshop.products[0].pack_image_asset == "card-pack-image-baseset.jpg"
+    assert cardshop.products[0].owned_quantity == 3
+    assert economy_repository.initialize_calls == 1
+
+
+async def test_purchase_uses_configured_price_and_returns_remaining_balance() -> None:
+    economy_repository = FakeEconomyRepository(point_balance=1_000)
+    service, _, _ = create_service(economy_repository=economy_repository)
+    await service.initialize()
+
+    purchase = await service.purchase_packs(123, "base1", 1)
+
+    assert economy_repository.purchase_calls == [(123, "base1", 1, 600)]
+    assert purchase.total_price == 600
+    assert purchase.remaining_balance == 400
+
+
+async def test_purchase_rejects_invalid_amount_and_insufficient_points() -> None:
+    economy_repository = FakeEconomyRepository(point_balance=100)
+    service, _, _ = create_service(economy_repository=economy_repository)
+    await service.initialize()
+
+    with pytest.raises(InvalidPackPurchaseAmountError):
+        await service.purchase_packs(123, "base1", 0)
+    with pytest.raises(InsufficientPointsError):
+        await service.purchase_packs(123, "base1", 1)
+
+
+async def test_daily_claim_and_point_grant_use_economy_repository() -> None:
+    economy_repository = FakeEconomyRepository(point_balance=0)
+    service, _, _ = create_service(economy_repository=economy_repository)
+    await service.initialize()
+
+    claim = await service.claim_daily_points(123)
+    grant = await service.gift_points(999, 123, 250)
+
+    assert claim.was_claimed is True
+    assert claim.awarded_points == 1_000
+    assert claim.point_balance == 1_000
+    assert claim.next_claim_at_utc.tzinfo is not None
+    assert economy_repository.grant_calls == [(123, 999, 250)]
+    assert grant.point_balance == 1_250
+
+
+async def test_point_grant_rejects_invalid_amount() -> None:
+    service, _, _ = create_service(economy_repository=FakeEconomyRepository())
+    await service.initialize()
+
+    with pytest.raises(InvalidPointGrantAmountError):
+        await service.gift_points(999, 123, 0)
+
+
 async def test_external_energy_set_is_synchronized_and_used_for_opening() -> None:
     energy_outcome = PackSlotOutcome(
         card_kind=CardKind.BASIC_ENERGY,
@@ -360,6 +492,8 @@ async def test_external_energy_set_is_synchronized_and_used_for_opening() -> Non
         set_id="sv3pt5",
         name="151",
         pack_image_asset="card-pack-image-151.webp",
+        shop_price=400,
+        shop_description="De moderne, special 151 set",
         slots=(
             PackSlotConfiguration(
                 outcomes=(

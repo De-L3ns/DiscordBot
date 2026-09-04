@@ -10,6 +10,8 @@ The bot uses Discord slash commands:
 - `/nostalgie`
 - `/packs`
 - `/giftpack` (Discord administrators)
+- `/daily`
+- `/giftpoints` (Discord administrators)
 - `/wielermanager`
 
 Wielermanager polling is available but disabled by default.
@@ -95,6 +97,9 @@ Important feature controls:
 - `WIELERMANAGER_CHANNEL_ID` is required only when polling is enabled.
 - `WIELERMANAGER_POLL_INTERVAL_MINUTES` defaults to `15`.
 - `CARDPACK_DATA_DIRECTORY` defaults to `data/cardpacks`.
+- `CARDPACK_DAILY_POINTS` defaults to `1000` points per `BOT_TIMEZONE` day.
+- `CARDPACK_SHOP_CHANNEL_ID` optionally identifies the read-only channel where
+  KletserBot maintains its shared cardshop launcher.
 - `POKEMON_TCG_API_KEY` is optional and is used only when a configured set has
   no valid local cache.
 

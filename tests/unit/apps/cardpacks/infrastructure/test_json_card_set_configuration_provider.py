@@ -30,6 +30,8 @@ def test_packaged_configuration_loads_151_and_base_set() -> None:
     configuration_151 = configurations[0]
     assert configuration_151.energy_set_id == "sve"
     assert configuration_151.pack_image_asset == "card-pack-image-151.webp"
+    assert configuration_151.shop_price == 400
+    assert configuration_151.shop_description == "De moderne, special 151 set"
     assert configuration_151.energy_card_ids == tuple(
         f"sve-{card_number}" for card_number in range(1, 9)
     )
@@ -51,6 +53,7 @@ def test_packaged_configuration_loads_151_and_base_set() -> None:
     base_set = configurations[1]
     assert base_set.energy_set_id == "base1"
     assert base_set.pack_image_asset == "card-pack-image-baseset.jpg"
+    assert base_set.shop_price == 600
     assert base_set.energy_card_ids == tuple(
         f"base1-{card_number}" for card_number in range(97, 103)
     )
@@ -71,6 +74,8 @@ def test_invalid_set_is_excluded_without_hiding_other_valid_sets(
                         "id": "invalid",
                         "name": "Invalid",
                         "packImageAsset": "invalid.jpg",
+                        "shopPrice": 400,
+                        "shopDescription": "Invalid test set.",
                         "energySetId": "invalid",
                         "energyCardIds": ["invalid-1"],
                     },
@@ -78,6 +83,8 @@ def test_invalid_set_is_excluded_without_hiding_other_valid_sets(
                         "id": "valid",
                         "name": "Valid",
                         "packImageAsset": "valid.jpg",
+                        "shopPrice": 400,
+                        "shopDescription": "Valid test set.",
                         "energySetId": "valid",
                         "energyCardIds": ["valid-1"],
                     },
@@ -147,6 +154,8 @@ def test_set_without_pull_rates_is_excluded(tmp_path: Path) -> None:
                         "id": "sv3pt5",
                         "name": "151",
                         "packImageAsset": "151.jpg",
+                        "shopPrice": 400,
+                        "shopDescription": "A modern Kanto adventure.",
                         "energySetId": "sve",
                         "energyCardIds": ["sve-1"],
                     }

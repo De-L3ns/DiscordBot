@@ -4,6 +4,8 @@
       "id": "sv3pt5",
       "name": "Scarlet & Violet—151",
       "packImageAsset": "card-pack-image-151.webp",
+      "shopPrice": 400,
+      "shopDescription": "De moderne, special 151 set",
       "energySetId": "sve",
       "energyCardIds": [
         "sve-1",
@@ -20,6 +22,8 @@
       "id": "base1",
       "name": "Base Set",
       "packImageAsset": "card-pack-image-baseset.jpg",
+      "shopPrice": 600,
+      "shopDescription": "De nostalgische base set",
       "energySetId": "base1",
       "energyCardIds": [
         "base1-97",

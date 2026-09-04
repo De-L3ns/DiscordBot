@@ -19,6 +19,7 @@ class KletserBot(commands.Bot):
     ) -> None:
         intents = discord.Intents.none()
         intents.guilds = True
+        intents.messages = True
         intents.reactions = True
         super().__init__(
             command_prefix=commands.when_mentioned,

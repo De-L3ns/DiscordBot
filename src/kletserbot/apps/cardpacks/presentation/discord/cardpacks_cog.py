@@ -6,10 +6,16 @@ from discord import app_commands
 from discord.ext import commands
 
 from kletserbot.apps.cardpacks.application.cardpack_service import CardpackService
+from kletserbot.apps.cardpacks.application.cardshop_message_service import (
+    CardshopMessageService,
+)
 from kletserbot.apps.cardpacks.application.dto.opened_card_dto import OpenedCardDto
 from kletserbot.apps.cardpacks.presentation.discord.cardpack_views import (
     CollectionSelectionView,
     InventorySelectionView,
+)
+from kletserbot.apps.cardpacks.presentation.discord.cardshop_views import (
+    CardshopLaunchView,
 )
 from kletserbot.shared.application.exceptions import ApplicationError
 
@@ -23,18 +29,124 @@ class CardpacksCog(commands.Cog):
         *,
         bot: commands.Bot | None = None,
         hit_channel_id: int | None = None,
+        shop_channel_id: int | None = None,
+        cardshop_message_service: CardshopMessageService | None = None,
     ) -> None:
         self._cardpack_service = cardpack_service
         self._bot = bot
         self._hit_channel_id = hit_channel_id
+        self._shop_channel_id = shop_channel_id
+        self._cardshop_message_service = cardshop_message_service
+        self._cardshop_message_lock = asyncio.Lock()
 
     async def cog_load(self) -> None:
         try:
             await self._cardpack_service.initialize()
+            if self._cardshop_message_service is not None:
+                await self._cardshop_message_service.initialize()
+            if self._bot is not None:
+                self._bot.add_view(self._create_cardshop_launch_view())
         except ApplicationError:
             logger.exception("cardpack_initialization_failed")
         except Exception:
             logger.exception("cardpack_initialization_unexpected_failure")
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        await self._ensure_cardshop_message()
+
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
+        if (
+            self._shop_channel_id is None
+            or payload.channel_id != self._shop_channel_id
+            or self._cardshop_message_service is None
+        ):
+            return
+        message_id = await self._cardshop_message_service.retrieve_message_id(self._shop_channel_id)
+        if message_id == payload.message_id:
+            await self._ensure_cardshop_message()
+
+    async def _ensure_cardshop_message(self) -> None:
+        if (
+            self._bot is None
+            or self._shop_channel_id is None
+            or self._cardshop_message_service is None
+        ):
+            return
+        async with self._cardshop_message_lock:
+            try:
+                channel = self._bot.get_channel(self._shop_channel_id)
+                if channel is None:
+                    channel = await self._bot.fetch_channel(self._shop_channel_id)
+                if not isinstance(channel, discord.TextChannel):
+                    logger.warning("cardshop_channel_invalid channel_id=%s", self._shop_channel_id)
+                    return
+                message_id = await self._cardshop_message_service.retrieve_message_id(
+                    self._shop_channel_id
+                )
+                if message_id is not None:
+                    try:
+                        message = await channel.fetch_message(message_id)
+                    except discord.NotFound:
+                        message = None
+                    if message is not None:
+                        launch_view = self._create_cardshop_launch_view()
+                        await message.edit(
+                            view=launch_view,
+                            attachments=launch_view.pack_image_files(),
+                        )
+                        return
+                launch_view = self._create_cardshop_launch_view()
+                message = await channel.send(
+                    view=launch_view,
+                    files=launch_view.pack_image_files(),
+                )
+                await self._cardshop_message_service.store_message_id(
+                    self._shop_channel_id,
+                    message.id,
+                )
+            except (ApplicationError, discord.DiscordException):
+                logger.exception(
+                    "cardshop_message_ensure_failed channel_id=%s",
+                    self._shop_channel_id,
+                )
+
+    def _create_cardshop_launch_view(self) -> CardshopLaunchView:
+        return CardshopLaunchView(
+            self._cardpack_service,
+            available_sets=self._cardpack_service.retrieve_available_sets(),
+        )
+
+    @app_commands.command(
+        name="daily",
+        description="Haal je dagelijkse cardshop-punten op.",
+    )
+    async def daily(self, interaction: discord.Interaction) -> None:
+        try:
+            claim = await self._cardpack_service.claim_daily_points(interaction.user.id)
+            if claim.was_claimed:
+                message = (
+                    f"✨ Je kreeg {claim.awarded_points:,} punten. "
+                    f"Je saldo is nu {claim.point_balance:,} punten."
+                )
+            else:
+                next_claim_timestamp = int(claim.next_claim_at_utc.timestamp())
+                message = (
+                    "Je hebt je dagelijkse punten vandaag al opgehaald. "
+                    f"Je kunt opnieuw punten claimen <t:{next_claim_timestamp}:R>. "
+                    f"Je saldo is {claim.point_balance:,} punten."
+                )
+            await interaction.response.send_message(message, ephemeral=True)
+        except ApplicationError:
+            logger.exception("cardpack_daily_command_failed")
+            await interaction.response.send_message(
+                "Je dagelijkse punten konden momenteel niet worden opgehaald.",
+                ephemeral=True,
+            )
+        except Exception:
+            logger.exception("cardpack_daily_command_unexpected_failure")
+            await interaction.response.send_message("Er ging onverwacht iets mis.", ephemeral=True)
 
     @app_commands.command(
         name="packs",
@@ -253,3 +365,44 @@ class CardpacksCog(commands.Cog):
             if normalized_current in card_set.set_name.casefold()
             or normalized_current in card_set.set_id.casefold()
         ][:25]
+
+    @app_commands.command(
+        name="giftpoints",
+        description="Geef cardshop-punten cadeau.",
+    )
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.describe(
+        user="De gebruiker die punten ontvangt.",
+        amount="Het aantal punten (1-1000000).",
+    )
+    async def giftpoints(
+        self,
+        interaction: discord.Interaction,
+        user: discord.Member,
+        amount: app_commands.Range[int, 1, 1_000_000],
+    ) -> None:
+        if not interaction.permissions.administrator:
+            await interaction.response.send_message(
+                "Je hebt beheerdersrechten nodig voor dit commando.",
+                ephemeral=True,
+            )
+            return
+        try:
+            grant = await self._cardpack_service.gift_points(
+                interaction.user.id,
+                user.id,
+                amount,
+            )
+            await interaction.response.send_message(
+                f"🎁 {user.mention} kreeg {amount:,} punten. "
+                f"Nieuw saldo: {grant.point_balance:,} punten.",
+                ephemeral=True,
+            )
+        except ApplicationError:
+            logger.exception("giftpoints_command_failed")
+            await interaction.response.send_message(
+                "De punten konden niet worden geschonken.", ephemeral=True
+            )
+        except Exception:
+            logger.exception("giftpoints_command_unexpected_failure")
+            await interaction.response.send_message("Er ging onverwacht iets mis.", ephemeral=True)

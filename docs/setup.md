@@ -26,6 +26,8 @@ are recorded in
 - `/nostalgie` for returning a random image from the configured Imgur album.
 - `/packs` for selecting and interactively opening persistent Pokémon packs.
 - `/giftpack` for administrators to gift configured Pokémon packs.
+- `/daily` for claiming configurable daily cardshop points.
+- `/giftpoints` for administrators to grant cardshop points.
 
 ### 2.2 Removed behavior
 
@@ -160,6 +162,8 @@ variables are read only while constructing this object.
 | HTTP timeout/retry settings | Optional, validated, bounded defaults |
 | `POKEMON_TCG_API_KEY` | Optional; raises Pokémon synchronization rate limits |
 | `CARDPACK_DATA_DIRECTORY` | Optional; defaults to `data/cardpacks` |
+| `CARDPACK_SHOP_CHANNEL_ID` | Optional dedicated read-only shared shop channel |
+| `CARDPACK_DAILY_POINTS` | Optional; defaults to `1000` points per `BOT_TIMEZONE` day |
 | `CARDPACK_SET_CATALOG_PATH` | Optional packaged JSON override |
 | `CARDPACK_PULL_RATES_PATH` | Optional packaged JSON override |
 

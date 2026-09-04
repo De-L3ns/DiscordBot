@@ -45,6 +45,8 @@ class ApplicationSettings:
     cardpack_pull_rates_path: Path
     cardpack_data_directory: Path
     cardpack_hit_channel_id: int | None
+    cardpack_shop_channel_id: int | None
+    cardpack_daily_points: int
     pokemon_tcg_api_key: str | None
     http_timeout_seconds: float
     http_max_attempts: int
@@ -140,6 +142,16 @@ class ApplicationSettings:
             cardpack_hit_channel_id=_parse_optional_positive_integer(
                 environment.get("CARDPACK_HIT_CHANNEL_ID"),
                 "CARDPACK_HIT_CHANNEL_ID",
+            ),
+            cardpack_shop_channel_id=_parse_optional_positive_integer(
+                environment.get("CARDPACK_SHOP_CHANNEL_ID"),
+                "CARDPACK_SHOP_CHANNEL_ID",
+            ),
+            cardpack_daily_points=_parse_bounded_integer(
+                environment.get("CARDPACK_DAILY_POINTS", "1000"),
+                "CARDPACK_DAILY_POINTS",
+                minimum=1,
+                maximum=1_000_000,
             ),
             pokemon_tcg_api_key=_parse_optional_secret(
                 environment.get("POKEMON_TCG_API_KEY"),
